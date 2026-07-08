@@ -1,0 +1,17 @@
+name = "MeromorphicLoci"
+uuid = "767268ff-ad81-4cfc-beec-7f34c307b461"
+authors = ["Beforerr"]
+version = "0.1.0"
+
+[workspace]
+projects = ["test", "docs", "benchmark"]
+
+
+[deps]
+RegionTrees = "dee08c22-ab7f-5625-9660-a9af2021b33f"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+
+[compat]
+RegionTrees = "0.3"
+StaticArrays = "1"
+julia = "1.10"
