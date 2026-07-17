@@ -20,26 +20,28 @@ const NSLICE = 128
 
 # --- region-tree survey (one 3-D pass) ---------------------------------------
 function run_tree()
-    s = survey(f, BOX; zres = ZTOL)
-    return (; nbranch = length(s), nzero = count(b -> winding(b) > 0, s),
-        nevals = s.nevals)
+    s = survey(f, BOX; zres=ZTOL)
+    return (; nbranch=length(s), nzero=count(b -> winding(b) > 0, s),
+        nevals=s.nevals)
 end
 
 # --- naive baseline: independent 2-D GRPF at each k --------------------------
-function run_slices()
+function run_slices(; nslice=NSLICE)
     ll, ur = BOX[1]
-    ks = range(BOX[2][1], BOX[2][2]; length = NSLICE)
+    ks = range(BOX[2][1], BOX[2][2]; length=nslice)
     evals = 0
     nroot = 0
+    coords = RootsAndPoles.rectangulardomain(ll, ur, ZTOL)
+    mesh = ComplexMesh(coords)
     for k in ks
         calls = Ref(0)
         fk = ω -> (calls[] += 1; f(ω, k))
-        origcoords = rectangulardomain(ll, ur, ZTOL)
-        roots, _ = grpf(fk, origcoords, GRPFParams(9000, ZTOL, false))
+        roots, _ = rootsandpoles(fk, mesh;
+            params=FinderParams(tol=ZTOL), refinement_mode=:regular)
         nroot += length(roots)
         evals += calls[]
     end
-    return (; nevals = evals, nroot_total = nroot, nslice = NSLICE)
+    return (; nevals=evals, nroot_total=nroot, nslice)
 end
 
 # --- warm up, then time -------------------------------------------------------

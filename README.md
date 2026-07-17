@@ -97,4 +97,5 @@ thread-safe (pure functions are).
   base cell strictly between its two p-corner slices can go dark there — the
   branch then reports as two cleanly labeled arcs with a small sample gap.
   Benign but alignment-sensitive: nudging the box corners or `minsep` re-rolls it.
-- [RootsAndPoles.jl — GRPF](https://github.com/fgasdia/RootsAndPoles.jl)
+- [RootsAndPoles.jl](https://github.com/fgasdia/RootsAndPoles.jl) implements SA-GRPF through Delaunay triangulation for m=0 problem. 
+  [Comparison benchmark](./benchmark/compare.jl) surveys the same 3-D box with both methods; our 3-D region-tree survey used 25× fewer evaluations and ran ~60× faster than 128 independent 2-D RootsAndPoles slices.
