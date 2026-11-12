@@ -53,7 +53,8 @@ end
 
 # Zeros of f are the poles of the fit to 1/f, and its poles that fit's zeros (findpoles fits f
 # itself). Each candidate is confirmed by the winding of f on a circle around it, kept clear of
-# the other candidates (see `_circle`) so that it holds one candidate's locus.
+# the other candidates (see `_circle`) so that it holds one candidate's locus and the polish
+# cannot reach a neighbour's.
 #
 # Candidates within spacing/1000 are one locus. Noise splits a multiple locus wider, and each
 # fragment's circle misses it or drowns in noise, so leftovers are retried as clusters (up to
@@ -109,13 +110,6 @@ function _enclose(f, zdomain, alg::AAA, ::Val{W}) where {W}
         end
     end
     return (; loci, nevals = n, info = (; fitconverged = converged))
-end
-
-function _points(f, zdomain, alg::AAA, ::Val{W}) where {W}
-    (; loci, nevals, info) = _enclose(f, zdomain, alg, Val(W))
-    found = sort!(filter(l -> l.w != 0, loci); by = l -> reim(l.z))
-    unresolved = sort!(ComplexF64[l.z for l in loci if l.w == 0]; by = reim)
-    return (; points = ComplexF64[l.z for l in found], windings = Int[l.w for l in found], unresolved, nevals, info...)
 end
 
 # Circle around the candidates `pts`: centred at their mean, as wide as the other candidates

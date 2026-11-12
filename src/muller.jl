@@ -84,3 +84,20 @@ function _muller(f, x0, x1, x2, center, radius; tol = 1.0e-10, maxiter = 100)
     end
     return (; root = best, converged = false, nevals)
 end
+
+"""
+    Muller(; tol = 1e-10, maxiter = 100)
+
+Polish for the simple zeros and poles using [`muller`](@ref) from each estimate.
+"""
+Base.@kwdef struct Muller
+    tol::Float64 = 1.0e-10
+    maxiter::Int = 100
+end
+
+# Unconverged, `root` still has no larger |g| than `z`, one of the seeds.
+function _polish(alg::Muller, g, z, radius)
+    r = muller(g, z; h = radius / 4, radius, alg.tol, alg.maxiter)
+    return (isnan(r.root) ? z : r.root), r.converged, r.nevals
+end
+_polish(::Nothing, g, z, radius) = (z, false, 0)

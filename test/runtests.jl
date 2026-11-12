@@ -29,6 +29,21 @@ end
     include("test_muller.jl")
 end
 
+@testset "point finders polish neighbouring loci apart, to machine precision" begin
+    a = 0.3 + 0.2im
+    f(z) = (z - a) * (z - a - 5e-4im) / (z + 0.5)
+    box = (-1 - 1im, 1 + 1im)
+    for alg in (AAA(), ArgumentPrinciple(zres=1e-4))
+        r = findzeropoles(f, box, alg)
+        @test r.windings == [-1, 1, 1] && isapprox(r.points[1], -0.5; atol = 1e-14)
+        # equal real parts: their reim order is rounding
+        @test sort(r.points[2:3]; by=imag) ≈ [a, a + 5e-4im] atol = 1e-14
+        @test all(r.converged) && isempty(r.unresolved)
+        raw = findzeropoles(f, box, alg; polish=nothing)
+        @test raw.nevals < r.nevals && !any(raw.converged)
+    end
+end
+
 @testset "README example survives its own asserts" begin
     f(p) = z -> (z - 0.80cispi(p)) * (z + 0.10 + 0.12im) /
                 ((z - 0.804cispi(-p + 0.3)) * (z + 0.13 + 0.12im))
@@ -180,7 +195,7 @@ end
     box, alg = (-1.0 - 1.0im, 1.0 + 1.0im), ArgumentPrinciple(zres=0.01)
     r = findzeropoles(f, box, alg)
     @test all(abs.(r.points .- [-0.4im, 0.3, 0.6]) .< 0.01) && r.windings == [2, 1, -1]
-    @test isempty(r.unresolved)
+    @test r.converged == [false, true, true] && isempty(r.unresolved)
     @test findzeros(f, box, alg).points == r.points[1:2] && findpoles(f, box, alg).points == r.points[3:3]
     @test findzeropoles(f, (1.0 - 1.0im, -1.0 + 1.0im), alg) == r
     # a fused pair without escalation is reported
@@ -198,6 +213,9 @@ end
     end
     # simple zeros a column apart: neither's vote counts the other
     @test length(findzeros(z -> (z - 0.3) * (z - 0.32), box, ArgumentPrinciple(zres=0.02)).points) == 2
+    # simple zeros fused into one branch stay at its mean: a polish would put both on one
+    r = findzeros(z -> (z - 0.3) * (z - 0.31), box, ArgumentPrinciple(zres=0.02))
+    @test r.windings == [2] && r.converged == [false] && abs(only(r.points) - 0.3) < 0.02 && abs(only(r.points) - 0.31) < 0.02
 end
 
 @testset "4-D: zero surface z*(p₁,p₂) over a 2-parameter box" begin

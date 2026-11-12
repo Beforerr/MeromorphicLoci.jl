@@ -4,8 +4,8 @@ Find the zeros and poles of a [meromorphic](#branch-cuts) function of complex `z
 at fixed parameters, or as loci `z*(p)` traced over `m ≥ 0` parameters `p`.
 
 ```julia
-findzeros(f, zdomain, alg)       # (; points, windings, unresolved, nevals, …)
-findpoles(f, zdomain, alg)       # the same, for poles
+findzeros(f, zdomain, alg)       # (; points, windings, converged, unresolved, nevals, …)
+findpoles(f, zdomain, alg)       # same for poles
 findzeropoles(f, zdomain, alg)   # both, told apart by the sign of `windings`
 findloci(f, zdomain, pdomain, alg)   # loci z*(p)
 ```
@@ -15,6 +15,10 @@ The point finders take `f(z)` and return
 - `points` — each distinct zero or pole found, sorted by real then imaginary part;
 - `windings` — the winding of `f` around each: its multiplicity, negative for a pole, or
   the count of simple ones closer together than the algorithm resolves;
+- `converged` — whether each was polished to the tolerance of the keyword `polish`
+  (`Muller()`; `nothing` keeps the algorithm's own estimates). Only points of winding ±1
+  are polished: a polish would put fused simple ones on one, and rounding in `f` limits
+  its accuracy at a multiple one;
 - `unresolved` — places where a zero or pole was detected but its kind could not be told;
 - `nevals` — the evaluations of `f` spent;
 

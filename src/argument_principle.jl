@@ -42,14 +42,16 @@ ArgumentPrinciple(; zres, minsep=nothing, zoom=4) =
 _loci(f, zdomain, pdomain::Tuple, alg::ArgumentPrinciple) =
     link(scan(f, (zdomain, pdomain...); alg.zres, alg.minsep); alg.zoom)
 
-# One point per branch, its mean sample. Winding-0 branches go to `unresolved`: a
-# zero/pole pair fused below `zres/2^zoom`, or a locus pinned where no vote could label it.
-function _points(f, zdomain, alg::ArgumentPrinciple, ::Val{W}) where {W}
+# One locus per branch, at its mean sample. The mean is within a cell of the locus, but an
+# escalated branch can sit nearer another than that, hence the reach.
+function _enclose(f, zdomain, alg::ArgumentPrinciple, ::Val)
     s = _loci(Returns(f), zdomain, (), alg)
-    at(b) = sum(x -> x.z, b) / length(b)
-    found = sort!([(z=at(b), w=winding(b)) for b in s if W * winding(b) >= 0 && winding(b) != 0]; by=t -> reim(t.z))
-    unresolved = sort!(ComplexF64[at(b) for b in s if winding(b) == 0]; by=reim)
-    return (; points=ComplexF64[t.z for t in found], windings=Int[t.w for t in found], unresolved, nevals=nevals(s))
+    zs = ComplexF64[sum(x -> x.z, b) / length(b) for b in s]
+    loci = map(enumerate(s)) do (i, b)
+        others = (zs[j] for j in eachindex(zs) if j != i)
+        (z=zs[i], r=_reach(zs[i], others, alg.zres), w=winding(b))
+    end
+    return (; loci, nevals=nevals(s), info=(;))
 end
 
 # Argument-principle quadrant, CCW half-open: 1:[0,π/2) 2:[π/2,π] 3:(-π,-π/2) 4:[-π/2,0).
