@@ -49,9 +49,9 @@ function _enclose(f, zdomain, alg::ArgumentPrinciple, ::Val)
     zs = ComplexF64[sum(x -> x.z, b) / length(b) for b in s]
     loci = map(enumerate(s)) do (i, b)
         others = (zs[j] for j in eachindex(zs) if j != i)
-        (z=zs[i], r=_reach(zs[i], others, alg.zres), w=winding(b))
+        Locus(zs[i], _reach(zs[i], others, alg.zres), winding(b))
     end
-    return (; loci, nevals=nevals(s), info=(;))
+    return (; loci, nevals=nevals(s), info=(;), pad=0.0)
 end
 
 # Argument-principle quadrant, CCW half-open: 1:[0,π/2) 2:[π/2,π] 3:(-π,-π/2) 4:[-π/2,0).

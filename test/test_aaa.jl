@@ -102,3 +102,10 @@ end
     @test length(r.points) == 2 && all(z -> minimum(abs, r.points .- z) < 1.0e-10, (-2.8 + 0.3im, -2.2 - 0.4im))
 end
 
+@testset "real zeros on the box edge" begin
+    for a in (0.13, 2.83, 6.07)
+        @test any(z -> abs(z - a) < 1.0e-10, findzeros(z -> (z - a) * (z - 4.4 - 0.05im), (0.0 + 0im, 10.0 + 0.1im), AAA()).points)
+    end
+    # just outside the box, within its circle's reach
+    @test findzeros(z -> (z - 0.5 + 0.02im) * (z - 0.3 - 0.5im), (0.0 + 0im, 1.0 + 1im), AAA()).points ≈ [0.3 + 0.5im]
+end

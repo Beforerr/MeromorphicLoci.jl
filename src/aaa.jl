@@ -30,7 +30,7 @@ end
 _loci(f, zdomain, pdomain, ::AAA) =
     throw(ArgumentError("AAA finds loci at fixed parameters only: use findzeros, findpoles or findzeropoles, or ArgumentPrinciple for findloci"))
 
-# Samples and a filter `inside(z, pad = 0)` on loci. Sample points bound no region.
+# Samples and a filter `inside(z, pad)` on loci. Sample points bound no region.
 _region(z::AbstractArray, m) = vec(z), Returns(true)
 function _region(zbox::Tuple{Number, Number}, m)
     lo, hi = _zcorners(zbox...)
@@ -41,8 +41,7 @@ function _region(zbox::Tuple{Number, Number}, m)
     ny = max(4, round(Int, sqrt(m * h / w)))
     nx = max(4, round(Int, m / ny))
     Z = vec(range(real(lo), real(hi), nx) .+ im .* range(imag(lo), imag(hi), ny)')
-    inside(z, pad = 0) = real(lo) - pad <= real(z) <= real(hi) + pad && imag(lo) - pad <= imag(z) <= imag(hi) + pad
-    return Z, inside
+    return Z, (z, pad) -> _inside((lo, hi), z, pad)
 end
 
 # Median distance from a sample to its nearest neighbour.
@@ -69,7 +68,7 @@ function _enclose(f, zdomain, alg::AAA, ::Val{W}) where {W}
     lone(zs, others) = filter(z -> all(o -> abs(o - z) >= spacing / 1000, others), zs)
     zc, pc = lone(zc, pc), lone(pc, zc)
     cands = [zc; pc]
-    loci = @NamedTuple{z::ComplexF64, r::Float64, w::Int}[]
+    loci = Locus[]
     n = nevals
     mean(g) = sum(g) / length(g)
     for (sgn, zs) in ((1, zc), (-1, pc))
@@ -79,12 +78,12 @@ function _enclose(f, zdomain, alg::AAA, ::Val{W}) where {W}
         state = fill(:left, length(groups))
         for (i, group) in enumerate(groups)
             z, r = _circle(group, cands, spacing / 2)
-            (r > 0 && inside(z)) || continue
+            r > 0 || continue
             w, ne = _circle_winding(f, z, r)
             n += ne
             w === nothing && (state[i] = :unresolved; continue)
             sign(w) == sgn || continue
-            push!(loci, (; z, r, w))
+            push!(loci, Locus(z, r, w))
             state[i] = :done
         end
         # Retry the leftovers, dropping the outermost group while other candidates crowd the circle.
@@ -97,19 +96,18 @@ function _enclose(f, zdomain, alg::AAA, ::Val{W}) where {W}
                     deleteat!(ids, argmax(k -> abs(mean(groups[ids[k]]) - z), eachindex(ids)))
                     continue
                 end
-                inside(z) || break
                 w, ne = _circle_winding(f, z, r)
                 n += ne
                 w === nothing || sign(w) == sgn || break
-                push!(loci, (; z, r, w = something(w, 0)))
+                push!(loci, Locus(z, r, something(w, 0)))
                 state[ids] .= :done
                 break
             end
             unres = filter(i -> state[i] == :unresolved, left[cl])
-            isempty(unres) || push!(loci, (z = mean(reduce(vcat, groups[unres])), r = 0.0, w = 0))
+            isempty(unres) || push!(loci, Locus(mean(reduce(vcat, groups[unres])), 0.0, 0))
         end
     end
-    return (; loci, nevals = n, info = (; fitconverged = converged))
+    return (; loci, nevals = n, info = (; fitconverged = converged), pad = spacing / 1000)
 end
 
 # Circle around the candidates `pts`: centred at their mean, as wide as the other candidates

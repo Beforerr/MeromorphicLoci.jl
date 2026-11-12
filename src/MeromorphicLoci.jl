@@ -30,18 +30,29 @@ Zeros and poles of `f(z)`; otherwise as [`findzeros`](@ref).
 """
 findzeropoles(f, zdomain, alg; polish=Muller()) = _points(f, zdomain, alg, Val(0), polish)
 
-# A point-finding algorithm implements `_enclose(f, zdomain, alg, Val(W))`, returning
-# `(; loci, nevals, info)`: each locus a centre `z`, a winding `w` (0 when its kind is
-# unknown) and a radius `r` that holds no other locus; `info` holds extra result fields.
-# Simple loci are polished within `r`.
+# A locus estimate: centre `z`, winding `w` (0 if unknown), radius `r` holding no other locus.
+struct Locus
+    z::ComplexF64
+    r::Float64
+    w::Int
+end
+
+"""
+    _enclose(f, zdomain, alg, ::Val{W}) -> (; loci::Vector{Locus}, nevals, info, pad)
+
+Implemented by each point-finding algorithm `alg`.
+"""
+function _enclose end
+
 function _points(f, zdomain, alg, ::Val{W}, polish) where {W}
-    (; loci, nevals, info) = _enclose(f, zdomain, alg, Val(W))
+    (; loci, nevals, info, pad) = _enclose(f, zdomain, alg, Val(W))
+    keep = zdomain isa Tuple{Number,Number} ? (z -> _inside(_zcorners(zdomain...), z, pad)) : Returns(true)
     found = @NamedTuple{z::ComplexF64, w::Int, converged::Bool}[]
     unresolved = ComplexF64[]
     for (; z, r, w) in loci
         W * w < 0 && continue
         if w == 0
-            push!(unresolved, z)
+            keep(z) && push!(unresolved, z)
             continue
         end
         converged = false
@@ -49,7 +60,7 @@ function _points(f, zdomain, alg, ::Val{W}, polish) where {W}
             z, converged, ne = _polish(polish, w > 0 ? f : inv ∘ f, z, r)
             nevals += ne
         end
-        push!(found, (; z, w, converged))
+        keep(z) && push!(found, (; z, w, converged))
     end
     sort!(found; by = t -> reim(t.z))
     sort!(unresolved; by = reim)
@@ -67,6 +78,9 @@ result is described in the README, [`MeromorphicLoci`](@ref).
 findloci(f, zdomain, pdomain, alg) = _loci(f, zdomain, pdomain, alg)
 
 _is_valid(fz) = isfinite(fz) && !iszero(fz)
+
+_inside((lo, hi), z, pad) =
+    real(lo) - pad <= real(z) <= real(hi) + pad && imag(lo) - pad <= imag(z) <= imag(hi) + pad
 
 # Uncertainty of a locus estimate `z`: `scale`, but under half the way to any other locus,
 # so neither the polish nor a circle around `z` reaches it.
