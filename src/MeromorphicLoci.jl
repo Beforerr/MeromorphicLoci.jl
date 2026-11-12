@@ -1,16 +1,18 @@
 module MeromorphicLoci
 
-export findzeros, findpoles, findzeropoles, findloci, ArgumentPrinciple
+using LinearAlgebra
+
+export findzeros, findpoles, findzeropoles, findloci, AAA, ArgumentPrinciple
 export Survey, Branch, Sample, winding
 @static if VERSION >= v"1.11.0-DEV.469"
-    eval(Meta.parse("public nevals"))
+    eval(Meta.parse("public aaa, poles, Barycentric, nevals"))
 end
 
 """
     findzeros(f, zdomain, alg)
 
-Zeros of `f(z)` over `zdomain`, found by `alg` ([`ArgumentPrinciple`](@ref)). The result
-is described in the README, [`MeromorphicLoci`](@ref).
+Zeros of `f(z)` over `zdomain`, found by `alg` ([`ArgumentPrinciple`](@ref) or
+[`AAA`](@ref)). The result is described in the README, [`MeromorphicLoci`](@ref).
 """
 findzeros(f, zdomain, alg) = _points(f, zdomain, alg, Val(1))
 
@@ -39,8 +41,13 @@ findloci(f, zdomain, pdomain, alg) = _loci(f, zdomain, pdomain, alg)
 
 _is_valid(fz) = isfinite(fz) && !iszero(fz)
 
+# Uncertainty of a locus estimate `z`: `scale`, but under half the way to any other locus,
+# so a circle around `z` does not reach it.
+_reach(z, others, scale) = min(scale, 0.4 * minimum(o -> abs(o - z), others; init = Inf))
+
 include("winding.jl")
 include("argument_principle.jl")
 include("link.jl")
+include("aaa.jl")
 
 end

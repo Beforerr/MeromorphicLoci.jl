@@ -24,12 +24,13 @@ or `findpoles` alone.
 `findloci` takes `f(p...)` returning the function of `z`, and
 returns a `Survey` of `Branch`es (below).
 
-Algorithm:
+Two algorithms:
 
 - **`ArgumentPrinciple(; zres, …)`** — adaptive cells over `(z, p...)`, refined
   only near the loci via Cauchy's argument principle. 
   z is refined to `zres`; `p` only as finely as the
   loci move. Loci come out connected and classified.
+- **`AAA(; nsamples, tol, …)`** — rational fit of samples of `f(z)`, at fixed parameters only.
 
 ## Argument principle
 
@@ -89,8 +90,26 @@ How it works: [docs/argument_principle.md](docs/argument_principle.md).
 Delaunay triangulation for the `m = 0` problem; [benchmark/compare.jl](./benchmark/compare.jl)
 surveys one 3-D box with one adaptive survey and with 128 independent 2-D RootsAndPoles slices.
 
+## AAA
+
+```julia
+f(z) = (z^2 - 1) * (z - 0.5im) / (z - 2)
+r = findzeros(f, (-3 - 1im, 3 + 1im), AAA())   # sampled evenly, about 320 points
+Z = filter(z -> abs(z) < 1.5, range(-1.5, 1.5, 30) .+ im .* range(-1.5, 1.5, 30)')
+r = findzeros(f, Z, AAA())                     # any sample points; loci wherever the fit puts them
+```
+
+`findzeros` fits `1/f` by AAA, reads candidate zeros off its poles (and poles of `f` off
+its zeros), and confirms each candidate by the winding of `f` on a small circle around it,
+which rejects spurious candidates and counts multiplicity (see the `AAA` docstring). `fitconverged = false` means the fit
+stopped short of `tol` and may have missed loci.
+See [docs/aaa.md](docs/aaa.md) for the fit, its cost and what it can miss;
+`benchmark/aaa.jl` compares it against RationalFunctionApproximation.jl and
+BaryRational.jl.
+
 ## Branch cuts
 
 A cut in the region is not detected as such. `ArgumentPrinciple` reports it as one
 `unresolved` (winding-0) locus when its phase jump skips a quadrant (`sqrt`), and
 misses it silently otherwise (`cbrt`), along with any zero at its branch point.
+`AAA` fills it with a string of interleaved zeros and poles.

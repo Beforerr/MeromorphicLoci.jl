@@ -17,8 +17,12 @@ iszerobranch(b) = winding(b) > 0
     @test quadrant(-1.0 - 0.0im) == quadrant(-1.0 + 0.0im) == 2
 end
 
-@testset "polygon winding" begin
+@testset "winding" begin
     include("test_winding.jl")
+end
+
+@testset "AAA" begin
+    include("test_aaa.jl")
 end
 
 @testset "README example survives its own asserts" begin
