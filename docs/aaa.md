@@ -1,8 +1,10 @@
 # The AAA fit
 
-`AAA()` finds zeros of $f$ from samples, without seeds. It samples $f$ on a grid
-$z_1,\dots,z_m$, fits a rational function to $y_i = 1/f(z_i)$, and reads the zeros of $f$
-off as the poles of the fit. This page describes the fit and what it costs.
+`AAA()` finds zeros of $f$ by sampling $f$ on a grid $z_1,\dots,z_m$ and 
+fitting a rational function to $y_i = 1/f(z_i)$. It reads the zeros of $f$
+off as the poles of the fit; each candidate is then confirmed by the winding
+on a small circle around, and polished. 
+This page describes the fit and what it costs.
 
 ## The AAA iteration
 
@@ -105,9 +107,10 @@ eigenproblem.
 ## What the fit can see
 
 A zero $z_0$ of $f$ is a pole of $1/f$ with residue $1/f'(z_0)$. The fit resolves it only if
-that residue stands above `tol`$\cdot\max|1/f|$ at the samples. Zeros where $|f'|$ is
-exponentially large are found or missed depending on details of the sampling, so a zero set
-is reproducible only above this threshold.
+that residue stands above `tol`$\cdot\max|1/f|$ at the samples it keeps: samples where
+$1/f$ is zero, non-finite, or above the median of its nearest samples by more than
+$1/\sqrt{\mathrm{tol}}$ (a sample on a pole of $1/f$) are dropped. Zeros where $|f'|$ is exponentially large are found or missed depending on
+details of the sampling, so a zero set is reproducible only above this threshold.
 
 ## References
 
