@@ -30,6 +30,15 @@ end
     @test isempty(r.points) && !r.fitconverged
 end
 
+@testset "a sample on a double zero does not end the fit" begin
+    # Double: 1e-9 from a sample of the 21 × 7 grid gives |1/f| ~ 1e18
+    a = range(-3, 3, 21)[15] + 1.0e-9
+    zs = [a, a, 1.3 - 0.4im, -2.1 + 0.2im, 0.25 + 0.7im]
+    r = findzeros(z -> prod(z .- zs) / (z - 3.5), (-3 - 1im, 3 + 1im), AAA(nsamples = 147))
+    @test r.fitconverged && sum(r.windings) == 5
+    @test all(z -> mult_near(r, z, 1.0e-6) == count(==(z), zs), zs)
+end
+
 @testset "findzeros on a filtered grid and on boundary points" begin
     zs = [1.0, -1.0, 0.5im]
     f(z) = prod(z .- zs) / (z - 2)
@@ -86,3 +95,10 @@ end
         @test findzeros(z -> z^k * exp(z), (-3 - 1im, 3 + 1im), AAA()).windings == [k]
     end
 end
+
+@testset "fast-growing f keeps its far side" begin
+    f(z) = exp(10z) * (z + 2.8 - 0.3im) * (z + 2.2 + 0.4im)
+    r = findzeros(f, (-3 - 1im, 3 + 1im), AAA())
+    @test length(r.points) == 2 && all(z -> minimum(abs, r.points .- z) < 1.0e-10, (-2.8 + 0.3im, -2.2 - 0.4im))
+end
+

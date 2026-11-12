@@ -132,12 +132,29 @@ function _clusters(zs, δ)
 end
 
 # A zero or non-finite value is dropped: fitting it would spend the fit's degree on its error.
+# So is a sample on a pole of `g` (`_off_locus`).
 function _fit(g, Z, alg::AAA)
     y = map(g, Z)
     ok = map(_is_valid, y)
-    all(ok) || ((Z, y) = (Z[ok], y[ok]))
+    nevals = length(ok)
+    Z, y = Z[ok], y[ok]
+    keep = _off_locus(Z, abs.(y), alg.tol)
+    Z, y = Z[keep], y[keep]
     (; fit, converged) = aaa(y, Z; alg.tol, alg.max_degree, alg.stagnation)
-    return (; fit, nevals = length(ok), converged)
+    return (; fit, nevals, converged)
+end
+
+# A sample above the median magnitude of its 8 nearest by 1/√tol sits on a pole of `g`. 
+# Kept, it ends the fit at its first node: `aaa`'s tolerance is
+# relative to max|g|, so the fit would stop missing every other pole. Against a global
+# median, a fast-growing `g` would lose its whole far side instead.
+function _off_locus(Z, a, tol)
+    k = min(8, length(Z) - 1)
+    k < 1 && return trues(length(Z))
+    return map(eachindex(Z)) do i
+        nb = a[partialsortperm(abs.(Z .- Z[i]), 2:(k + 1))]
+        a[i] <= partialsort!(nb, (k + 1) ÷ 2) / sqrt(tol)
+    end
 end
 
 struct Barycentric{Z <: AbstractVector, V <: AbstractVector, W <: AbstractVector}
