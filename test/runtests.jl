@@ -25,6 +25,10 @@ end
     include("test_aaa.jl")
 end
 
+@testset "muller" begin
+    include("test_muller.jl")
+end
+
 @testset "README example survives its own asserts" begin
     f(p) = z -> (z - 0.80cispi(p)) * (z + 0.10 + 0.12im) /
                 ((z - 0.804cispi(-p + 0.3)) * (z + 0.13 + 0.12im))

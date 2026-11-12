@@ -5,7 +5,7 @@ using LinearAlgebra
 export findzeros, findpoles, findzeropoles, findloci, AAA, ArgumentPrinciple
 export Survey, Branch, Sample, winding
 @static if VERSION >= v"1.11.0-DEV.469"
-    eval(Meta.parse("public aaa, poles, Barycentric, nevals"))
+    eval(Meta.parse("public aaa, poles, Barycentric, nevals, muller"))
 end
 
 """
@@ -49,5 +49,6 @@ include("winding.jl")
 include("argument_principle.jl")
 include("link.jl")
 include("aaa.jl")
+include("muller.jl")
 
 end
