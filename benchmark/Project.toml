@@ -1,0 +1,7 @@
+[deps]
+MeromorphicLoci = "767268ff-ad81-4cfc-beec-7f34c307b461"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+RootsAndPoles = "a0859a10-ccb4-11e8-145d-674b3750773a"
+
+[sources]
+RootsAndPoles = {url = "https://github.com/fgasdia/RootsAndPoles.jl"}
