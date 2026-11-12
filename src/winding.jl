@@ -1,6 +1,10 @@
+# Evaluations per edge: a clean k-fold locus hugging an edge costs O(k·log(edge/distance));
+# noise swamping `f` exhausts it.
+const _EDGE_BUDGET = 1024
+
 # Winding of `f` around closed polygons — `edges` index pairs into the vertices `zs` — and
-# the evaluations spent; `nothing` marks an unusable sample (0/NaN/Inf) or an
-# unresolvable phase jump.
+# the evaluations spent; `nothing` on an unusable sample (0/NaN/Inf), an unresolvable
+# phase jump, or an edge past `_EDGE_BUDGET`.
 function _polygon_winding(f, zs, edges)
     lf = Vector{ComplexF64}(undef, length(zs))
     Threads.@threads for i in eachindex(zs, lf)
@@ -14,7 +18,7 @@ function _polygon_winding(f, zs, edges)
     Threads.@threads for k in eachindex(edges, Δ, n)
         i, j = edges[k]
         za, zb = zs[i], zs[j]
-        Δ[k], n[k] = _wind_refine(t -> f(za + t * (zb - za)), 0.0, 1.0, lf[i], lf[j])
+        Δ[k], n[k] = _wind_refine(t -> f(za + t * (zb - za)), 0.0, 1.0, lf[i], lf[j], 0, _EDGE_BUDGET)
     end
     ne += sum(n; init=0)
     any(isnan, Δ) && return nothing, ne
