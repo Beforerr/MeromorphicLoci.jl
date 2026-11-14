@@ -9,6 +9,14 @@ end
     @test muller(z -> (z - 0.25)^2, 0.25; h = 0.25) == (; root = 0.25 + 0im, converged = true, nevals = 3)
 end
 
+@testset "polishing a pole: on it, the reciprocal is 0, not 0/0" begin
+    g = MeromorphicLoci._reciprocal(z -> 1 / (z - 0.1))
+    # guess, seed x0 - h and Muller step exactly on the pole
+    for x0 in (0.1, 0.11, 0.12)
+        @test muller(g, x0 + 0im; h = 0.01, radius = 0.04) == (; root = 0.1 + 0im, converged = true, nevals = 3 + (x0 == 0.12))
+    end
+end
+
 @testset "non-finite f" begin
     @test isnan(muller(x -> ComplexF64(Inf, Inf), 1.0, 1.1, 1.2).root)
     @test isnan(muller(x -> ComplexF64(NaN, NaN), 1.0, 1.1, 1.2).root)

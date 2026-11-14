@@ -44,6 +44,9 @@ Implemented by each point-finding algorithm `alg`.
 """
 function _enclose end
 
+# complex x/0 is NaN while 1/f → 0
+_reciprocal(f) = z -> (w = f(z); isfinite(w) ? inv(w) : zero(w))
+
 function _points(f, zdomain, alg, ::Val{W}, polish) where {W}
     (; loci, nevals, info, pad) = _enclose(f, zdomain, alg, Val(W))
     keep = zdomain isa Tuple{Number,Number} ? (z -> _inside(_zcorners(zdomain...), z, pad)) : Returns(true)
@@ -57,7 +60,7 @@ function _points(f, zdomain, alg, ::Val{W}, polish) where {W}
         end
         converged = false
         if abs(w) == 1
-            z, converged, ne = _polish(polish, w > 0 ? f : inv ∘ f, z, r)
+            z, converged, ne = _polish(polish, w > 0 ? f : _reciprocal(f), z, r)
             nevals += ne
         end
         keep(z) && push!(found, (; z, w, converged))
