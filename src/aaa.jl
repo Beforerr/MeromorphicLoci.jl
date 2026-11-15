@@ -16,9 +16,9 @@ array of sample points, with loci reported wherever the fit finds them.
 - `max_degree`, `stagnation` — the fit stops at this degree, or after this many steps
   without improving.
 
-`unresolved` lists candidates that `f` was too noisy or undefined around to confirm. `f` can
-return `NaN` where its value cannot be trusted; those samples are skipped. A zero and a pole
-of `f` much closer together than the samples are not reported.
+`unresolved` lists candidates `f` was too noisy or undefined around to confirm. 
+Samples where `f` is `NaN` are skipped, so return `NaN` where it cannot be trusted. 
+A zero and a pole much closer together than the samples are not reported.
 """
 Base.@kwdef struct AAA
     nsamples::Int = 320

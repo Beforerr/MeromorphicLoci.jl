@@ -50,7 +50,7 @@ end
 # path; such a locus also swings |g| across the half, which the modulus test catches.
 # Where evaluation noise swamps g, every half fails the tests at every depth, so the
 # bisection would branch everywhere: past `budget` evaluations the increment is NaN.
-function _wind_refine(g, a, b, la, lb, depth=0, budget=typemax(Int))
+function _wind_refine(g, a, b, la, lb, depth, budget)
     budget < 1 && return NaN, 0
     m = (a + b) / 2
     gm = g(m)
