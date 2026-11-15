@@ -2,8 +2,7 @@ module MeromorphicLoci
 
 using LinearAlgebra
 
-export findzeros, findpoles, findzeropoles, findloci, AAA, ArgumentPrinciple, Muller
-export Survey, Branch, Sample, winding
+export findzeros, findpoles, findzeropoles, AAA, ArgumentPrinciple, Muller
 @static if VERSION >= v"1.11.0-DEV.469"
     eval(Meta.parse("public aaa, poles, Barycentric, nevals, muller"))
 end
@@ -13,6 +12,9 @@ end
 
 Zeros of `f(z)` over `zdomain`, found by `alg` ([`ArgumentPrinciple`](@ref) or
 [`AAA`](@ref)). The result is described in the README (`?MeromorphicLoci`).
+Where `f` overflows to `Inf` or underflows to 0 its phase is unreadable, and loci there go
+unfound: divide out exponential growth, or shrink the box.
+
 """
 findzeros(f, zdomain, alg; polish=Muller()) = _points(f, zdomain, alg, Val(1), polish)
 
@@ -71,16 +73,10 @@ function _points(f, zdomain, alg, ::Val{W}, polish) where {W}
     return merge((; points, windings, converged, unresolved, nevals), info)
 end
 
-"""
-    findloci(f, zdomain, pdomain, alg)
-
-Loci `z*(p)` of the zeros and poles of `f(p...)(z)` over `zdomain` as `p` ranges over
-`pdomain`, by algorithm `alg` ([`ArgumentPrinciple`](@ref)), as a [`Survey`](@ref). The
-result is described in the README (`?MeromorphicLoci`).
-"""
-findloci(f, zdomain, pdomain, alg) = _loci(f, zdomain, pdomain, alg)
-
 _is_valid(fz) = isfinite(fz) && !iszero(fz)
+
+_zcorners(a, b) = (complex(min(real(a), real(b)), min(imag(a), imag(b))),
+    complex(max(real(a), real(b)), max(imag(a), imag(b))))
 
 _inside((lo, hi), z, pad) =
     real(lo) - pad <= real(z) <= real(hi) + pad && imag(lo) - pad <= imag(z) <= imag(hi) + pad
@@ -92,7 +88,7 @@ _reach(z, others, scale) = min(scale, 0.4 * minimum(o -> abs(o - z), others; ini
 include("muller.jl")
 include("winding.jl")
 include("argument_principle.jl")
-include("link.jl")
+include("labels.jl")
 include("aaa.jl")
 
 end

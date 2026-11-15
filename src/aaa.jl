@@ -27,9 +27,6 @@ Base.@kwdef struct AAA
     stagnation::Int = 5
 end
 
-_loci(f, zdomain, pdomain, ::AAA) =
-    throw(ArgumentError("AAA finds loci at fixed parameters only: use findzeros, findpoles or findzeropoles, or ArgumentPrinciple for findloci"))
-
 # Samples and a filter `inside(z, pad)` on loci. Sample points bound no region.
 _region(z::AbstractArray, m) = vec(z), Returns(true)
 function _region(zbox::Tuple{Number, Number}, m)
