@@ -1,4 +1,5 @@
 using Documenter, MeromorphicLoci
+using CairoMakie
 
 readme = read(joinpath(@__DIR__, "..", "README.md"), String)
 write(joinpath(@__DIR__, "src", "index.md"),
