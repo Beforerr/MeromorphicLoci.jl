@@ -10,18 +10,20 @@ adaptive refinement of cells where the phase of `f` winds.
 - `minsep` — cells are refined to this size before any is discarded. A zero and a pole
   closer than `minsep` can cancel inside one cell and vanish silently, so keep it below
   their closest spacing; below `zres`, it is the resolution in place of `zres`. Loci of
-  one kind closer than `minsep` can be missed too. `minsep` also sets the cost floor,
-  about `2·area/minsep²` evaluations.
-  `nothing` means the box diagonal / 8, or `zres` if that is coarser.
+  one kind closer than `minsep` can escape the search; the box's count recovers them at
+  extra cost (`deficit` below). `minsep` also sets the cost floor, about
+  `2·area/minsep²` evaluations. `nothing` means the box diagonal / 8, or `zres` if that
+  is coarser.
 - `zoom` — halvings below `zres` a group of cells of indeterminate winding is refined to
   separate a fused zero–pole pair, at most 8; one closer than `zres/2^zoom` is reported
   `unresolved`.
 
-What else it can miss or leave indeterminate:
-- a zero or pole of order ≥ 3 — occasionally at order 3, often from order 4; divide known
-  factors out of `f`;
-- a locus on the box edge itself, so pad the box;
-- rarely, a locus right beside another, closer than `minsep`.
+Besides the common fields, returns `deficit`: zeros minus poles in the box that the loci
+found (both kinds, as `findzeropoles` reports them) leave unaccounted. Nonzero means
+missed loci, often a zero or pole of order ≥ 4: divide known factors out of `f`.
+`nothing` means the winding around the box can't be read: `f` is non-finite on its edge,
+or a locus sits there (pad the box). A zero–pole pair cancels in the count, so `deficit`
+can't see one missed.
 """
 struct ArgumentPrinciple
     zres::Float64
@@ -42,13 +44,15 @@ function _enclose(f, zdomain, alg::ArgumentPrinciple, ::Val)
     roots = [Cell(memo, (Int32(i - 1) * st[1], Int32(j - 1) * st[2]), st) for i in 1:(lat.zn[1]>>lat.kz), j in 1:(lat.zn[2]>>lat.kz)]
     tree = Tree(memo, roots)
     cells = _refine!(tree, vec(roots), alg.zres)
+    wbox = _certify!(tree, cells, alg.zres)
     groups = _label(tree, cells; alg.zoom)
+    deficit = isnothing(wbox) ? nothing : wbox - sum(last, groups; init=0)
     zs = ComplexF64[sum(c -> _zcenter(lat, c), cs) / length(cs) for (cs, _) in groups]
     loci = map(enumerate(groups)) do (i, (_, w))
         others = (zs[j] for j in eachindex(zs) if j != i)
         Locus(zs[i], _reach(zs[i], others, alg.zres), w)
     end
-    return (; loci, nevals=nevals(memo), info=(;), pad=0.0)
+    return (; loci, nevals=nevals(memo), info=(; deficit), pad=0.0)
 end
 
 # Argument-principle quadrant, CCW half-open: 1:[0,π/2) 2:[π/2,π] 3:(-π,-π/2) 4:[-π/2,0).
@@ -132,7 +136,7 @@ _zcenter(lat::Lattice, c::Cell) = complex(
 
 @inline _zdiag(lat::Lattice, c::Cell) = hypot(c.step[1] * lat.zh[1], c.step[2] * lat.zh[2])
 
-# `f` on the lattice, shared by the scan and the votes. `_slot!` claims a
+# `f` on the lattice, shared by the search, the certificate and the votes. `_slot!` claims a
 # point's slot in `vals` and queues it; `_fill!` evaluates the queue as one batch.
 struct Memo{F}
     f::F
@@ -255,6 +259,53 @@ function _refine!(tree::Tree, frontier, zres)
             _zdiag(tree.memo.lat, c) > zres ? append!(next, split!(tree.memo, c)) : push!(out, c)
         end
         frontier = next
+    end
+    return out
+end
+
+# Certificate (docs/src/argument_principle.md): the box's winding, `nothing` if unreadable.
+# Where the found cells' vote differs from it, dark leaves that wind are searched again.
+function _certify!(tree::Tree, cells, zres)
+    (; memo) = tree
+    (; lat) = memo
+    wbox = _polygon_winding(memo, _boxpoly(lat, (Int32(1) << lat.kz, Int32(1) << lat.kz))...)
+    isnothing(wbox) && return nothing
+    wf = isempty(cells) ? 0 : _vote(tree, cells)
+    (isnothing(wf) || wf == wbox) && return wbox
+    suspects = _darkleaves(tree.roots)
+    while !isempty(suspects)
+        frontier = Cell[]
+        for c in suspects
+            w = _polygon_winding(memo, _boxpoly(c)...)
+            w == 0 && continue
+            if _zdiag(lat, c) > zres
+                append!(frontier, split!(memo, c))
+            elseif !isnothing(w)
+                c.state = _FACE
+                push!(cells, c)
+            end
+        end
+        append!(cells, _refine!(tree, frontier, zres))
+        suspects = _darkleaves(frontier)
+    end
+    return wbox
+end
+
+# The outline of a box of `n` cells, each `st` lattice steps, through every cell corner.
+function _boxpoly(st, n; base=(0, 0))
+    nx, ny = n
+    ring = [(0:nx-1) .=> 0; nx .=> (0:ny-1); (nx:-1:1) .=> ny; 0 .=> (ny:-1:1)]
+    return [(Float64(base[1] + x * st[1]), Float64(base[2] + y * st[2])) for (x, y) in ring], [(i, mod1(i + 1, length(ring))) for i in eachindex(ring)]
+end
+_boxpoly(lat::Lattice, st) = _boxpoly(st, (Int(lat.zn[1] ÷ st[1]), Int(lat.zn[2] ÷ st[2])))
+_boxpoly(c::Cell) = _boxpoly(c.step, (1, 1); c.base)
+
+function _darkleaves(cells)
+    out = Cell[]
+    stack = vec(collect(cells))
+    while !isempty(stack)
+        c = pop!(stack)
+        isempty(c.children) ? (c.state == _DARK && push!(out, c)) : append!(stack, c.children)
     end
     return out
 end

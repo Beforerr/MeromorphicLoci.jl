@@ -49,7 +49,7 @@ end
         r = findzeropoles(f, (-1 - 1im, 1 + 1im), alg; polish)
         @test r.nevals == n[]
     end
-    # the scan and the votes share their points: none is evaluated twice
+    # the search, the certificate and the votes share their points: none is evaluated twice
     seen = ComplexF64[]
     findzeropoles(z -> (push!(seen, z); (z - 0.3) * (z + 0.4im)^2 / (z - 0.6)), (-1 - 1im, 1 + 1im),
         ArgumentPrinciple(zres=0.02); polish=nothing)
@@ -75,6 +75,20 @@ end
         r = findzeropoles(z -> ((z - a) * (z - b))^sg, box, alg; polish=nothing)
         @test r.windings == [sg, sg] && all(z -> minimum(abs.(r.points .- z)) < 0.02, (a, b))
     end
+end
+
+@testset "loci a coarse cell aliases away are recovered where the box's count exceeds the found" begin
+    # eight zeros on a circle 0.1 across, inside one root cell: its corners turn 8 times
+    for c in (0.3 + 0.2im, 0.123 - 0.456im)
+        r = findzeros(z -> (z - c)^8 - 0.1^8, (-1 - 1im, 1 + 1im), ArgumentPrinciple(zres=0.02))
+        @test r.windings == fill(1, 8) && r.deficit == 0 && r.nevals < 3500
+    end
+    # a zero on the box edge leaves the box's count unreadable: unchecked, not passed
+    g8(z) = ((z - 0.3 - 0.2im)^8 - 0.1^8) * (z - 1 - 0.1234im)
+    @test findzeros(g8, (-1 - 1im, 1 + 1im), ArgumentPrinciple(zres=0.02)).deficit === nothing
+    # a 4-fold zero on a lattice point: only cells beside it fire, so the cells' count
+    # passes but labelling drops them; the deficit counts the labels, not the cells
+    @test findzeros(z -> (z - (1 + 1im) / 128)^4, (-1 - 1im, 1 + 1im), ArgumentPrinciple(zres=0.02)).deficit == 4
 end
 
 @testset "`minsep` sets the base mesh, hence the evaluation floor" begin

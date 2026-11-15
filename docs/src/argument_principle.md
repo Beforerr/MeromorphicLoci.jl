@@ -1,10 +1,11 @@
 # How `ArgumentPrinciple` works
 
-`ArgumentPrinciple` finds the zeros and poles (**loci**) of `f` in a box in three steps:
+`ArgumentPrinciple` finds the zeros and poles (**loci**) of `f` in a box in four steps:
 
 1. **Search**: refine a mesh of cells toward loci, reading only the phase of `f` at cell corners.
-2. **Label**: group the cells and count each group by the argument principle.
-3. **Escalate**: refine groups whose label is unclear.
+2. **Certificate**: count the box's loci by its winding; search again where the cells fall short.
+3. **Label**: group the cells and count each group by the argument principle.
+4. **Escalate**: refine groups whose label is unclear.
 
 ## Cells
 
@@ -33,8 +34,8 @@ Firing cells split down to `zres`. The rest go dark.
 ```@example ap
 using MeromorphicLoci, CairoMakie, Base64
 using MeromorphicLoci: Lattice, Memo, Cell, Tree,
-    _zcorners, _refine!, _group, _outline, _vote, _mixed, _deepen!, _polygon_winding,
-    _cellwinding, _qstep, quadrant, _DARK
+    _zcorners, _refine!, _certify!, _vote, _group, _outline, _mixed, _deepen!,
+    _polygon_winding, _cellwinding, _qstep, quadrant, _darkleaves
 
 const GREEN, RED, GREY = "#389826", "#CB3C33", "#777777"
 const QCOLORS = ["#E69F00", "#56B4E9", "#009E73", "#CC79A7"]   # quadrants 1–4
@@ -80,14 +81,6 @@ function search(f, box, alg)
     tree = Tree(memo, roots)
     return tree, _refine!(tree, vec(roots), alg.zres)
 end
-function darkcells(tree)
-    out, stack = Cell[], vec(copy(tree.roots))
-    while !isempty(stack)
-        c = pop!(stack)
-        isempty(c.children) ? (c.state == _DARK && push!(out, c)) : append!(stack, c.children)
-    end
-    return out
-end
 # Outline of a group in the z-plane, its vote, the points the vote evaluated, and whether it is mixed.
 function outline(tree, cells)
     lat = tree.memo.lat
@@ -103,7 +96,7 @@ tree, cells = search(f, BOX, ArgumentPrinciple(zres=0.05))
 fig = Figure(; size=(420, 400))
 ax = Axis(fig[1, 1]; aspect=DataAspect(), xlabel="Re z", ylabel="Im z")
 phase!(ax, f, BOX...)
-mesh!(ax, tree.memo, cells, darkcells(tree))
+mesh!(ax, tree.memo, cells, _darkleaves(tree.roots))
 nothing # hide
 ```
 
@@ -186,6 +179,48 @@ embed(fig, "walk_guard") # hide
 edge's quadrant step. Left: one simple zero. Middle: one of two zeros (○). Right: a 4-fold
 zero.*
 
+## Certificate
+
+The winding of `f` around the box counts its loci, zeros minus poles.
+
+- The search passes if the firing cells, grown by one cell, wind the same.
+- Otherwise each dark cell is checked by its own winding. It holds no firing cell, so a
+  nonzero winding is a missed locus: the cell is searched again, and fires if it still
+  winds at `zres`.
+- What the labels (below) leave of the box's count is reported as `deficit` (see
+  [`ArgumentPrinciple`](@ref)).
+
+```@raw html
+<details><summary>Code</summary>
+```
+
+```@example ap
+# Eight zeros inside one root cell, before and after the count is checked.
+c = 0.3 + 0.2im
+f = z -> (z - c)^8 - 0.1^8
+alg = ArgumentPrinciple(zres=0.02, minsep=0.36)
+tree, cells = search(f, BOX, alg)
+fig = Figure(; size=(720, 380))
+for (i, title) in enumerate(("search", "after the certificate"))
+    i == 2 && _certify!(tree, cells, alg.zres)
+    local ax = Axis(fig[1, i]; aspect=DataAspect(), xlabel="Re z", ylabel="Im z", title="$title: $(length(cells)) firing cells")
+    phase!(ax, f, BOX...)
+    mesh!(ax, tree.memo, cells, _darkleaves(tree.roots))
+end
+nothing # hide
+```
+
+```@raw html
+</details>
+```
+
+```@example ap
+embed(fig, "certificate") # hide
+```
+
+*Eight zeros on a circle 0.1 across, inside one root cell (`minsep = 0.36`). The search
+finds some; the box counts 8, so the dark cells that wind are searched again.*
+
 ## Labels
 
 - Firing cells at `zres` that share an edge or a corner form a **group**.
@@ -234,9 +269,9 @@ a simple zero, a simple pole and a double zero at `zres = 0.05`.*
 
 - A group whose cells show both signs, votes 0, or cannot be read is refined one level
   below `zres`, regrouped and labelled again, up to `zoom` levels.
-- A group that votes 0 and has nothing firing one level finer is dropped: its cells fired
-  on a misread phase (a locus just outside the box, a phase turning faster than a cell),
-  not on a locus.
+- A group that votes 0 or cannot be read, and has nothing firing one level finer, is
+  dropped: its cells fired on a misread phase (a locus just outside the box, a phase
+  turning faster than a cell), not on a locus.
 - A group still unlabelled at the last level is reported `unresolved`: a zero and a pole
   closer than a last-level cell.
 - Each labelled group is reported at the mean of its cell centres, then polished.
@@ -253,14 +288,14 @@ rows = [
 ]
 fig = Figure(; size=(580, 250))
 for (r, (; f, box, zres, zeros, poles, view)) in enumerate(rows)
-    tree, cells = search(f, box, ArgumentPrinciple(; zres))
+    local tree, cells = search(f, box, ArgumentPrinciple(; zres))
     undecided(g) = (o = outline(tree, g); o.mixed || something(o.w, 0) == 0)
     levels = [_group(cells)]
     while any(undecided, levels[end]) && length(levels) < 3
         push!(levels, reduce(vcat, [undecided(g) ? _group(_deepen!(tree, g)) : [g] for g in levels[end]]))
     end
     for (i, groups) in enumerate(levels)
-        ax = Axis(fig[r, i]; aspect=DataAspect(), title=i == 1 ? "zres" : "zres / $(2^(i - 1))")
+        local ax = Axis(fig[r, i]; aspect=DataAspect(), title=i == 1 ? "zres" : "zres / $(2^(i - 1))")
         hidedecorations!(ax)
         phase!(ax, f, view...)
         for g in groups
@@ -293,7 +328,8 @@ finer they split. Cells are green, red or grey as their group votes positive, ne
 
 | Case | Effect | Recovered by |
 |---|---|---|
-| Zero–pole pair much closer than `minsep` | cancels on the walk; its phase fades within a few pair-widths | nothing |
-| Same-sign loci closer than `minsep`, or phase turning > π/2 between corners | walk reads 0 | nothing |
-| k-fold locus centred in a cell | walk misreads it (triple −4, 4-fold 0) at every scale, since (z − z0)^k is scale-free | nothing; labels unaffected |
-| Simple locus with a second one hugging the same edge | can slip past walk and guard | nothing |
+| Zero–pole pair much closer than `minsep` | cancels on the walk and in the box's count; its phase fades within a few pair-widths | nothing |
+| Same-sign loci closer than `minsep`, or phase turning > π/2 between corners | walk reads 0 | certificate |
+| k-fold locus centred in a cell | walk misreads it (triple −4, 4-fold 0) at every scale, since (z − z0)^k is scale-free | certificate |
+| Simple locus with a second one hugging the same edge | can slip past walk and guard | certificate, or fused into its partner's label |
+| k-fold locus on a lattice point | only cells beside it fire; outlines through it can't be read and it is dropped | flagged by `deficit` |
