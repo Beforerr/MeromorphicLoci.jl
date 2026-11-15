@@ -13,6 +13,7 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "AAA" => "aaa.md",
+        "Continuation" => "continuation.md",
         "ArgumentPrinciple" => "argument_principle.md",
         "API" => "api.md",
     ],

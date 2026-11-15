@@ -29,6 +29,10 @@ end
     include("test_muller.jl")
 end
 
+@testset "continuation" begin
+    include("test_continuation.jl")
+end
+
 @testset "point finders polish neighbouring loci apart, to machine precision" begin
     a = 0.3 + 0.2im
     f(z) = (z - a) * (z - a - 5e-4im) / (z + 0.5)
