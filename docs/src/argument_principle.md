@@ -33,9 +33,8 @@ Firing cells split down to `zres`. The rest go dark.
 
 ```@example ap
 using MeromorphicLoci, CairoMakie, Base64
-using MeromorphicLoci: Lattice, Memo, Cell, Tree,
-    _zcorners, _refine!, _certify!, _outlined, _group, _outline, _mixed, _deepen!,
-    _polygon_winding, _cellwinding, _qstep, quadrant, _darkleaves
+using MeromorphicLoci: _search, _certify!, _group, _outline, _outlined, _mixed, _deepen!,
+    _polygon_winding, _cellwinding, _qstep, quadrant, Cell
 
 const GREEN, RED, GREY = "#389826", "#CB3C33", "#777777"
 const QCOLORS = ["#E69F00", "#56B4E9", "#009E73", "#CC79A7"]   # quadrants 1–4
@@ -70,34 +69,23 @@ function mesh!(ax, memo, cells, dark)
     scatter!(ax, [Point2f(reim(lat[ix])...) for ix in keys(memo.slot)]; color=:black, markersize=2)
     scatter!(ax, [Point2f(reim(lat[c.base.+c.step./2])...) for c in cells]; marker=:rect, color=:black, strokecolor=:white, strokewidth=1, markersize=9)
 end
-# The search as `_enclose` runs it: the tree, and its firing cells at `zres`.
-function search(f, box, alg)
-    zbox = _zcorners(box...)
-    minsep = Float64(something(alg.minsep, max(abs(zbox[2] - zbox[1]) / 8, alg.zres)))
-    lat = Lattice(zbox, alg.zres, minsep)
-    memo = Memo(f, lat, map)
-    st = (Int32(1) << lat.kz, Int32(1) << lat.kz)
-    roots = [Cell(memo, (Int32(i - 1) * st[1], Int32(j - 1) * st[2]), st) for i in 1:(lat.zn[1]>>lat.kz), j in 1:(lat.zn[2]>>lat.kz)]
-    tree = Tree(memo, roots)
-    return tree, _refine!(tree, vec(roots), alg.zres)
-end
 # Outline of a group in the z-plane, its vote, the points the vote evaluated, and whether it is mixed.
-function outline(tree, cells)
-    lat = tree.memo.lat
+function outline(memo, cells)
+    lat = memo.lat
     vs, edges = _outline(lat, cells)
     pts = NTuple{2,Float64}[]
-    _polygon_winding(p -> (append!(pts, p); tree.memo(p)), vs, edges)
-    w, lo, hi = _outlined(tree, cells)
+    _polygon_winding(p -> (append!(pts, p); memo(p)), vs, edges)
+    w, lo, hi = _outlined(memo, cells)
     segs = [Point2f(reim(lat[vs[i]])...) for e in edges for i in e]
-    return (; segs, w, mixed=!isnothing(w) && _mixed(tree.memo, cells, lo, hi), pts=[Point2f(reim(lat[p])...) for p in pts])
+    return (; segs, w, mixed=!isnothing(w) && _mixed(memo, cells, lo, hi), pts=[Point2f(reim(lat[p])...) for p in pts])
 end
 
 f = z -> (z - 0.3) * (z + 0.4im)^2 / (z - 0.6)
-tree, cells = search(f, BOX, ArgumentPrinciple(zres=0.05))
+memo, cells, dark = _search(f, BOX, ArgumentPrinciple(zres=0.05), map)
 fig = Figure(; size=(420, 400))
 ax = Axis(fig[1, 1]; aspect=DataAspect(), xlabel="Re z", ylabel="Im z")
 phase!(ax, f, BOX...)
-mesh!(ax, tree.memo, cells, _darkleaves(tree.roots))
+mesh!(ax, memo, cells, dark)
 nothing # hide
 ```
 
@@ -200,13 +188,13 @@ The winding of `f` around the box counts its loci, zeros minus poles.
 c = 0.3 + 0.2im
 f = z -> (z - c)^8 - 0.1^8
 alg = ArgumentPrinciple(zres=0.02, minsep=0.36)
-tree, cells = search(f, BOX, alg)
+memo, cells, dark = _search(f, BOX, alg, map)
 fig = Figure(; size=(720, 380))
 for (i, title) in enumerate(("search", "after the certificate"))
-    i == 2 && _certify!(tree, cells, alg.zres)
+    i == 2 && _certify!(memo, cells, dark, alg.zres)
     local ax = Axis(fig[1, i]; aspect=DataAspect(), xlabel="Re z", ylabel="Im z", title="$title: $(length(cells)) firing cells")
     phase!(ax, f, BOX...)
-    mesh!(ax, tree.memo, cells, _darkleaves(tree.roots))
+    mesh!(ax, memo, cells, dark)
 end
 nothing # hide
 ```
@@ -241,13 +229,13 @@ finds some; the box counts 8, so the dark cells that wind are searched again.*
 ```@example ap
 zs, ps = [0.10 + 0.07im, -0.2 - 0.15im], [0.27 + 0.12im]
 f = z -> (z - zs[1]) * (z - zs[2])^2 / (z - ps[1])
-tree, cells = search(f, BOX, ArgumentPrinciple(zres=0.05))
+memo, cells, _ = _search(f, BOX, ArgumentPrinciple(zres=0.05), map)
 fig = Figure(; size=(500, 380))
 ax = Axis(fig[1, 1]; aspect=DataAspect(), xlabel="Re z", ylabel="Im z")
 phase!(ax, f, -0.42 - 0.36im, 0.5 + 0.32im)
 for g in _group(cells)
-    o = outline(tree, g)
-    poly!(ax, rect.(Ref(tree.memo.lat), g); color=(signcolor(o.w), 0.55), strokecolor=:black, strokewidth=0.5)
+    o = outline(memo, g)
+    poly!(ax, rect.(Ref(memo.lat), g); color=(signcolor(o.w), 0.55), strokecolor=:black, strokewidth=0.5)
     linesegments!(ax, o.segs; color=:black, linewidth=2.5)
     scatter!(ax, o.pts; color=:white, strokecolor=:black, strokewidth=1, markersize=6)
     text!(ax, minimum(first, o.segs), maximum(last, o.segs); text="w = $(signed(o.w))", fontsize=16, font=:bold, align=(:left, :bottom))
@@ -293,19 +281,19 @@ rows = [
 ]
 fig = Figure(; size=(580, 480))
 for (r, (; f, box, zres, zeros, poles, view)) in enumerate(rows)
-    local tree, cells = search(f, box, ArgumentPrinciple(; zres))
-    undecided(g) = (o = outline(tree, g); o.mixed || something(o.w, 0) == 0)
+    local memo, cells = _search(f, box, ArgumentPrinciple(; zres), map)
+    undecided(g) = (o = outline(memo, g); o.mixed || something(o.w, 0) == 0)
     levels = [_group(cells)]
     while any(undecided, levels[end]) && length(levels) < 3
-        push!(levels, reduce(vcat, [undecided(g) ? _group(_deepen!(tree, g)) : [g] for g in levels[end]]))
+        push!(levels, reduce(vcat, [undecided(g) ? _group(_deepen!(memo, g)) : [g] for g in levels[end]]))
     end
     for (i, groups) in enumerate(levels)
         local ax = Axis(fig[r, i]; aspect=DataAspect(), title=i == 1 ? "zres" : "zres / $(2^(i - 1))")
         hidedecorations!(ax)
         phase!(ax, f, view...)
         for g in groups
-            o = outline(tree, g)
-            poly!(ax, rect.(Ref(tree.memo.lat), g); color=(signcolor(o.w), 0.6), strokecolor=:black, strokewidth=0.5)
+            o = outline(memo, g)
+            poly!(ax, rect.(Ref(memo.lat), g); color=(signcolor(o.w), 0.6), strokecolor=:black, strokewidth=0.5)
             linesegments!(ax, o.segs; color=:black, linewidth=2.5)
             left = something(o.w, 0) ≥ 0    # opposite corners, so neighbouring labels stay apart
             text!(ax, (left ? minimum : maximum)(first, o.segs), maximum(last, o.segs); text="w = $(signed(o.w))" * (o.mixed ? ", mixed" : ""),

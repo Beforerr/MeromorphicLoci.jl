@@ -32,20 +32,26 @@ struct ArgumentPrinciple
 end
 ArgumentPrinciple(; zres, minsep=nothing, zoom=4) = ArgumentPrinciple(Float64(zres), minsep, zoom)
 
-# One locus per labelled group of cells, at the mean of its cell centres. The mean is
-# within a cell of the locus, but an escalated group can sit nearer another than that,
-# hence the reach.
-function _enclose(f, zdomain, alg::ArgumentPrinciple, ::Val, mapper)
+# The search: `f` on the lattice, the cells firing at `zres`, and the dark cells.
+function _search(f, zdomain, alg::ArgumentPrinciple, mapper)
     zbox = _zcorners(zdomain...)
     minsep = Float64(something(alg.minsep, max(abs(zbox[2] - zbox[1]) / 8, alg.zres)))
     lat = Lattice(zbox, alg.zres, minsep)
     memo = Memo(f, lat, mapper)
-    st = (Int32(1) << lat.kz, Int32(1) << lat.kz)
-    roots = [Cell(memo, (Int32(i - 1) * st[1], Int32(j - 1) * st[2]), st) for i in 1:(lat.zn[1]>>lat.kz), j in 1:(lat.zn[2]>>lat.kz)]
-    tree = Tree(memo, roots)
-    cells = _refine!(tree, vec(roots), alg.zres)
-    wbox = _certify!(tree, cells, alg.zres)
-    groups = _label(tree, cells; alg.zoom)
+    roots = _cells(memo, (Int32(0), Int32(0)), (Int32(1) << lat.kz, Int32(1) << lat.kz), lat.zn .>> lat.kz)
+    dark = Cell[]
+    cells = _refine!(memo, roots, alg.zres, dark)
+    return memo, cells, dark
+end
+
+# One locus per labelled group of cells, at the mean of its cell centres. The mean is
+# within a cell of the locus, but an escalated group can sit nearer another than that,
+# hence the reach.
+function _enclose(f, zdomain, alg::ArgumentPrinciple, ::Val, mapper)
+    memo, cells, dark = _search(f, zdomain, alg, mapper)
+    (; lat) = memo
+    wbox = _certify!(memo, cells, dark, alg.zres)
+    groups = _label(memo, cells; alg.zoom)
     deficit = isnothing(wbox) ? nothing : wbox - sum(last, groups; init=0)
     zs = ComplexF64[sum(c -> _zcenter(lat, c), cs) / length(cs) for (cs, _) in groups]
     loci = map(enumerate(groups)) do (i, (_, w))
@@ -102,33 +108,21 @@ end
 
 @inline Base.getindex(lat::Lattice, ix) = complex(lat.zo[1] + ix[1] * lat.zh[1], lat.zo[2] + ix[2] * lat.zh[2])
 
-# A classified cell is dark, or fires on its face or only on the guard (`_classify`).
-const _PENDING, _DARK, _FACE, _GUARD, _SPLIT = Int8(0), Int8(1), Int8(2), Int8(3), Int8(4)
-
 # A box of the lattice: `base` index of its low corner, `step` its index extent per axis,
 # `corners` the memo slots of its corners (0,0), (1,0), (0,1), (1,1).
-mutable struct Cell
+struct Cell
     base::NTuple{2,Int32}
     step::NTuple{2,Int32}
     corners::NTuple{4,Int32}
-    state::Int8
-    children::Vector{Cell}
-end
-function Cell(memo, base, step)
-    corners = ntuple(i -> _slot!(memo, (base[1] + Int32((i - 1) & 1) * step[1], base[2] + Int32((i - 1) >> 1) * step[2])), 4)
-    return Cell(base, step, corners, _PENDING, Cell[])
 end
 
-function split!(memo, c::Cell)
-    h = c.step .>> 1
-    for j in 0:1, i in 0:1
-        push!(c.children, Cell(memo, (c.base[1] + Int32(i) * h[1], c.base[2] + Int32(j) * h[2]), h))
-    end
-    c.state = _SPLIT
-    return c.children
+function _cells(memo, base, step, n)
+    at(i, j) = (base[1] + Int32(i) * step[1], base[2] + Int32(j) * step[2])
+    s = [_slot!(memo, at(i, j)) for i in 0:n[1], j in 0:n[2]]
+    return vec([Cell(at(i, j), step, (s[i+1, j+1], s[i+2, j+1], s[i+1, j+2], s[i+2, j+2])) for i in 0:n[1]-1, j in 0:n[2]-1])
 end
 
-_firing(c::Cell) = c.state == _FACE || c.state == _GUARD
+_split(memo, c::Cell) = _cells(memo, c.base, c.step .>> 1, (2, 2))
 
 _zcenter(lat::Lattice, c::Cell) = complex(
     lat.zo[1] + (c.base[1] + c.step[1] / 2) * lat.zh[1],
@@ -163,9 +157,10 @@ function _fill!(m::Memo)
     return
 end
 
-# Quadrant of `f` at a slot, or at a lattice point; 0 where it awaits `_fill!`.
+# Quadrant of `f` at a slot, 0 where it awaits `_fill!`; `_quadrant!` claims the slot of a
+# lattice point first.
 @inline _quadrant(m::Memo, s::Int32) = s ≤ length(m.vals) ? quadrant(@inbounds m.vals[s]) : 0
-@inline Base.getindex(m::Memo, ix) = _quadrant(m, _slot!(m, ix))
+@inline _quadrant!(m::Memo, ix) = _quadrant(m, _slot!(m, ix))
 
 # `f` at outline points in lattice coordinates: memoised on the lattice, evaluated directly
 # where a bisection passes below it.
@@ -181,19 +176,16 @@ end
 
 @inline _quadrants(memo, c::Cell) = map(s -> _quadrant(memo, s), c.corners)
 
-# Signed phase winding of the quadrants at points walked CCW: +4 for an enclosed zero, −4
-# for a pole, `nothing` if any step jumps two quadrants (an unresolved ±π step whose
-# direction is ambiguous — the cell must be refined).
-@inline function _face_winding(q::Tuple)
+# Signed phase winding of a cell's corner quadrants (in `_quadrants` order) walked CCW: +4
+# for an enclosed zero, −4 for a pole, `nothing` if any step jumps two quadrants (an
+# unresolved ±π step whose direction is ambiguous — the cell must be refined).
+@inline function _cellwinding(q)
     w = 0
-    n = length(q)
-    @inbounds for i in 1:n
-        w += @something(_qstep(q[i], q[i%n+1]), return nothing)
+    for (a, b) in ((q[1], q[2]), (q[2], q[4]), (q[4], q[3]), (q[3], q[1]))
+        w += @something(_qstep(a, b), return nothing)
     end
     return w
 end
-# Around a cell, from its corner quadrants in `_quadrants` order.
-@inline _cellwinding(q) = _face_winding((q[1], q[2], q[4], q[3]))
 
 # Quadrant step from `a` to `b`, `nothing` for an ambiguous ±π.
 @inline function _qstep(a, b)
@@ -201,63 +193,62 @@ end
     return d == 2 ? nothing : d == 3 ? -1 : d
 end
 
-_fw_fires(fw) = isnothing(fw) || fw != 0
-
-# A cell fires on its face (`_FACE`) if the walk around its corners winds or is ambiguous.
-#
-# A cell whose face is clean still fires on the guard (`_GUARD`, docs/src/argument_principle.md,
-# Search) if the quadrants at its corners and at the midpoints of its quadrant-crossing
-# edges number ≥ 3. A midpoint is a lattice point, reread by the children if the cell
-# splits.
-#
-# Returns `_PENDING` while a point it needs reads 0 (unevaluated).
-function _classify(memo, c::Cell)
+# Whether a cell fires: the walk around its corners winds or is ambiguous, or the guard
+# (docs/src/argument_principle.md, Search) finds ≥ 3 quadrants at its corners and at the
+# midpoints of its quadrant-crossing edges. A midpoint is a lattice point, reread by the
+# halves if the cell splits. `nothing` while a point it needs is unevaluated.
+function _fires(memo, c::Cell)
     q = _quadrants(memo, c)
-    any(iszero, q) && return _PENDING
-    _fw_fires(_cellwinding(q)) && return _FACE
+    any(iszero, q) && return nothing
+    w = _cellwinding(q)
+    (isnothing(w) || w != 0) && return true
     m = 0
     for x in q
         m |= 1 << x
     end
-    count_ones(m) ≥ 3 && return _GUARD
-    all(>(1), c.step) || return _DARK
+    count_ones(m) ≥ 3 && return true
+    all(>(1), c.step) || return false
     h = c.step .>> 1
     # (corner, corner, midpoint in half-steps) for each edge
     for (k1, k2, x, y) in ((1, 2, 1, 0), (2, 4, 2, 1), (4, 3, 1, 2), (3, 1, 0, 1))
         q[k1] == q[k2] && continue
-        m |= 1 << memo[(c.base[1] + Int32(x) * h[1], c.base[2] + Int32(y) * h[2])]
+        m |= 1 << _quadrant!(memo, (c.base[1] + Int32(x) * h[1], c.base[2] + Int32(y) * h[2]))
     end
-    isodd(m) && return _PENDING
-    return count_ones(m) ≥ 3 ? _GUARD : _DARK
+    isodd(m) && return nothing    # bit 0: a midpoint unevaluated
+    return count_ones(m) ≥ 3
 end
 
-# Set each cell's state from `_classify`, evaluating the points it reads in batches.
-function _classify!(memo, cells)
-    while !isempty(cells)
-        cells = filter(cells) do c
-            c.state = _classify(memo, c)
-            c.state == _PENDING
+# `_fires` of each cell, evaluating the points they read in batches.
+function _fires(memo, cells::Vector{Cell})
+    fires = falses(length(cells))
+    pending = collect(eachindex(cells))
+    while !isempty(pending)
+        filter!(pending) do i
+            f = _fires(memo, cells[i])
+            isnothing(f) && return true
+            fires[i] = f
+            return false
         end
         _fill!(memo)
     end
-end
-
-# The refinement state the labelling continues from: escalation refines further.
-struct Tree{M}
-    memo::M
-    roots::Matrix{Cell}
+    return fires
 end
 
 # Refine `frontier` where it fires, down to diagonal `zres`, and return the firing cells
-# there. Breadth-first: each round's evaluations are known up front and batched.
-function _refine!(tree::Tree, frontier, zres)
+# there; cells that do not fire are pushed to `dark`. Breadth-first: each round's
+# evaluations are known up front and batched.
+function _refine!(memo, frontier, zres, dark=Cell[])
     out = Cell[]
     while !isempty(frontier)
-        _classify!(tree.memo, frontier)
         next = Cell[]
-        for c in frontier
-            _firing(c) || continue
-            _zdiag(tree.memo.lat, c) > zres ? append!(next, split!(tree.memo, c)) : push!(out, c)
+        for (c, fires) in zip(frontier, _fires(memo, frontier))
+            if !fires
+                push!(dark, c)
+            elseif _zdiag(memo.lat, c) > zres
+                append!(next, _split(memo, c))
+            else
+                push!(out, c)
+            end
         end
         frontier = next
     end
@@ -265,29 +256,29 @@ function _refine!(tree::Tree, frontier, zres)
 end
 
 # Certificate (docs/src/argument_principle.md): the box's winding, `nothing` if unreadable.
-# Where the found cells' vote differs from it, dark leaves that wind are searched again.
-function _certify!(tree::Tree, cells, zres)
-    (; memo) = tree
+# Where the found cells' vote differs from it, dark cells that wind are searched again.
+function _certify!(memo, cells, dark, zres)
     (; lat) = memo
     wbox = _polygon_winding(memo, _boxpoly(lat, (Int32(1) << lat.kz, Int32(1) << lat.kz))...)
     isnothing(wbox) && return nothing
-    wf = isempty(cells) ? 0 : _vote(tree, cells)
+    wf = isempty(cells) ? 0 : _vote(memo, cells)
     (isnothing(wf) || wf == wbox) && return wbox
-    suspects = _darkleaves(tree.roots)
+    suspects = copy(dark)
+    empty!(dark)
     while !isempty(suspects)
         frontier = Cell[]
         for c in suspects
             w = _polygon_winding(memo, _boxpoly(c)...)
-            w == 0 && continue
-            if _zdiag(lat, c) > zres
-                append!(frontier, split!(memo, c))
-            elseif !isnothing(w)
-                c.state = _FACE
-                push!(cells, c)
+            if w == 0
+                push!(dark, c)
+            elseif _zdiag(lat, c) > zres
+                append!(frontier, _split(memo, c))
+            else
+                push!(isnothing(w) ? dark : cells, c)
             end
         end
-        append!(cells, _refine!(tree, frontier, zres))
-        suspects = _darkleaves(frontier)
+        suspects = Cell[]
+        append!(cells, _refine!(memo, frontier, zres, suspects))
     end
     return wbox
 end
@@ -300,13 +291,3 @@ function _boxpoly(st, n; base=(0, 0))
 end
 _boxpoly(lat::Lattice, st) = _boxpoly(st, (Int(lat.zn[1] ÷ st[1]), Int(lat.zn[2] ÷ st[2])))
 _boxpoly(c::Cell) = _boxpoly(c.step, (1, 1); c.base)
-
-function _darkleaves(cells)
-    out = Cell[]
-    stack = vec(collect(cells))
-    while !isempty(stack)
-        c = pop!(stack)
-        isempty(c.children) ? (c.state == _DARK && push!(out, c)) : append!(stack, c.children)
-    end
-    return out
-end

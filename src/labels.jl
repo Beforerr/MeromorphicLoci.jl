@@ -1,7 +1,7 @@
 # Group the firing cells into loci and label each by winding: `cells => winding` pairs.
-function _label(tree::Tree, cells; zoom)
+function _label(memo, cells; zoom)
     isempty(cells) && return Pair{Vector{Cell},Int}[]
-    return _resolve(tree, _group(cells); zoom)
+    return _resolve(memo, _group(cells); zoom)
 end
 
 # Connected components (union-find) of a nonempty set of cells of one size, adjacent
@@ -31,7 +31,7 @@ end
 # Label connected groups of same-size cells by `_vote`, escalating as in
 # docs/src/argument_principle.md (Labels, Escalation); returns `cells => winding`
 # pairs, winding 0 for a group left unlabelled.
-function _resolve(tree, groups; zoom)
+function _resolve(memo, groups; zoom)
     out = Pair{Vector{Cell},Int}[]
     # (cells, the coarsest ancestor cells of the same locus set): while escalation leaves a
     # group in one piece, the label sharpens but its cells stay at the requested resolution.
@@ -39,10 +39,10 @@ function _resolve(tree, groups; zoom)
     for level in zoom:-1:0
         deepen = Tuple{Vector{Cell},Vector{Cell},Bool}[]
         for (cells, top) in todo
-            w, lo, hi = _outlined(tree, cells)
+            w, lo, hi = _outlined(memo, cells)
             # at the last level, or at the lattice floor, the net vote stands
             last = level == 0 || cells[1].step[1] ≤ 1
-            mixed = !last && !isnothing(w) && _mixed(tree.memo, cells, lo, hi)
+            mixed = !last && !isnothing(w) && _mixed(memo, cells, lo, hi)
             if !isnothing(w) && w != 0 && !mixed
                 push!(out, top => w)
             elseif last
@@ -53,7 +53,7 @@ function _resolve(tree, groups; zoom)
         end
         empty!(todo)
         for (cells, top, uncounted) in deepen
-            kids = _deepen!(tree, cells)
+            kids = _deepen!(memo, cells)
             if isempty(kids)
                 # nothing fires a level finer and no outline counts a locus: dropped
                 uncounted || push!(out, top => 0)
@@ -79,18 +79,14 @@ function _mixed(memo, cells, lo, hi)
 end
 
 # Refine the cells one level, above the lattice floor.
-function _deepen!(tree, cells)
-    kids = Cell[]
-    for c in cells
-        append!(kids, split!(tree.memo, c))
-    end
-    return _refine!(tree, kids, _zdiag(tree.memo.lat, kids[1]))
+function _deepen!(memo, cells)
+    kids = reduce(vcat, [_split(memo, c) for c in cells])
+    return _refine!(memo, kids, _zdiag(memo.lat, kids[1]))
 end
 
 # Winding of `f` around the group's outline, `nothing` if unusable, and the
 # extremes of |f|² sampled on it.
-function _outlined(tree, cells)
-    (; memo) = tree
+function _outlined(memo, cells)
     seen = ComplexF64[]
     w = _polygon_winding(_outline(memo.lat, cells)...) do pts
         vals = memo(pts)
@@ -100,7 +96,7 @@ function _outlined(tree, cells)
     lo, hi = extrema(abs2, seen)
     return w, lo, hi
 end
-_vote(tree, cells) = first(_outlined(tree, cells))
+_vote(memo, cells) = first(_outlined(memo, cells))
 
 # The cells grown by one cell all round and clipped to the box, as polygon vertices
 # and edges with the region on their left (docs/src/argument_principle.md, Labels).
