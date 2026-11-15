@@ -5,8 +5,8 @@ Zeros and poles of `f(z)` in the box `zdomain = (zlo, zhi)` by
 adaptive refinement of cells where the phase of `f` winds.
 
 - `zres` — resolution of the points before the polish, and the scale at which loci are
-  told apart: loci closer than about `zres` fuse into one of their net winding. Two
-  simple zeros read as one double zero; a zero–pole pair reads 0 until `zoom` separates it.
+  told apart: loci closer than about `zres` fuse into one of their net winding, e.g. two
+  simple zeros read as one double zero.
 - `minsep` — cells are refined to this size before any is discarded. A zero and a pole
   closer than `minsep` can cancel inside one cell and vanish silently, so keep it below
   their closest spacing; below `zres`, it is the resolution in place of `zres`. Loci of
@@ -14,9 +14,9 @@ adaptive refinement of cells where the phase of `f` winds.
   extra cost (`deficit` below). `minsep` also sets the cost floor, about
   `2·area/minsep²` evaluations. `nothing` means the box diagonal / 8, or `zres` if that
   is coarser.
-- `zoom` — halvings below `zres` a group of cells of indeterminate winding is refined to
-  separate a fused zero–pole pair, at most 8; one closer than `zres/2^zoom` is reported
-  `unresolved`.
+- `zoom` — halvings below `zres`, at most 8, to separate a fused zero–pole pair. A pair of
+  equal orders closer than `zres/2^zoom` is reported `unresolved`; one of different orders
+  closer than about `zres` stays fused, as one locus of their net winding.
 
 Besides the common fields, returns `deficit`: zeros minus poles in the box that the loci
 found (both kinds, as `findzeropoles` reports them) leave unaccounted. Nonzero means

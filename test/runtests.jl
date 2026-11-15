@@ -122,6 +122,9 @@ end
     # zoom = 0 disables escalation: the pair is reported, its kind unknown
     fused = findzeropoles(pair, box, ArgumentPrinciple(zres=0.05, zoom=0))
     @test isempty(fused.points) && length(fused.unresolved) == 1
+    # a zero beside a double pole votes −1: |f| at the cells' corners shows both kinds
+    r = findzeropoles(z -> (z - 0.52 - 0.33im) / (z - 0.55 - 0.33im)^2, (-1 - 1im, 1 + 1im), ArgumentPrinciple(zres=0.02))
+    @test r.windings == [1, -2]
 end
 
 @testset "a locus within a cell of the box edge is labelled, its outline clipped to the box" begin

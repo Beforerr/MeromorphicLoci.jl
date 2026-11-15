@@ -39,11 +39,13 @@ function _resolve(tree, groups; zoom)
     for level in zoom:-1:0
         deepen = Tuple{Vector{Cell},Vector{Cell},Bool}[]
         for (cells, top) in todo
-            mixed = level > 0 && _mixed(tree.memo, cells)
-            w = mixed ? nothing : _vote(tree, cells)
-            if !isnothing(w) && w != 0
+            w, lo, hi = _outlined(tree, cells)
+            # at the last level, or at the lattice floor, the net vote stands
+            last = level == 0 || cells[1].step[1] ≤ 1
+            mixed = !last && !isnothing(w) && _mixed(tree.memo, cells, lo, hi)
+            if !isnothing(w) && w != 0 && !mixed
                 push!(out, top => w)
-            elseif level == 0
+            elseif last
                 push!(out, top => 0)
             else
                 push!(deepen, (cells, top, !mixed))
@@ -54,7 +56,7 @@ function _resolve(tree, groups; zoom)
             kids = _deepen!(tree, cells)
             if isempty(kids)
                 # nothing fires a level finer and no outline counts a locus: dropped
-                uncounted && cells[1].step[1] > 1 || push!(out, top => 0)
+                uncounted || push!(out, top => 0)
                 continue
             end
             gs = _group(kids)
@@ -65,26 +67,19 @@ function _resolve(tree, groups; zoom)
     return out
 end
 
-# Sign of the locus a cell's corner walk fully encloses (±4): 1 zero, −1 pole, else 0.
-@inline function _encloses(memo, c::Cell)
-    fw = _cellwinding(_quadrants(memo, c))
-    return fw == 4 ? 1 : fw == -4 ? -1 : 0
-end
-
-function _mixed(memo, cells)
-    pos = neg = false
-    for c in cells
-        s = _encloses(memo, c)
-        pos |= s > 0
-        neg |= s < 0
+# Whether the group holds both zero and pole, maximum modulus principle.
+function _mixed(memo, cells, lo, hi)
+    zero = pole = false
+    for c in cells, s in c.corners
+        a = abs2(memo.vals[s])
+        zero |= a < lo
+        pole |= a > hi
     end
-    return pos && neg
+    return zero && pole
 end
 
-# Refine the cells one level; empty at the lattice floor, where child corners have no
-# index left.
+# Refine the cells one level, above the lattice floor.
 function _deepen!(tree, cells)
-    cells[1].step[1] ≤ 1 && return Cell[]
     kids = Cell[]
     for c in cells
         append!(kids, split!(tree.memo, c))
@@ -92,8 +87,20 @@ function _deepen!(tree, cells)
     return _refine!(tree, kids, _zdiag(tree.memo.lat, kids[1]))
 end
 
-# Winding of `f` around the group's outline (`_outline`), `nothing` if unusable.
-_vote(tree, cells) = _polygon_winding(tree.memo, _outline(tree.memo.lat, cells)...)
+# Winding of `f` around the group's outline, `nothing` if unusable, and the
+# extremes of |f|² sampled on it.
+function _outlined(tree, cells)
+    (; memo) = tree
+    seen = ComplexF64[]
+    w = _polygon_winding(_outline(memo.lat, cells)...) do pts
+        vals = memo(pts)
+        append!(seen, vals)
+        return vals
+    end
+    lo, hi = extrema(abs2, seen)
+    return w, lo, hi
+end
+_vote(tree, cells) = first(_outlined(tree, cells))
 
 # The cells grown by one cell all round and clipped to the box, as polygon vertices
 # and edges with the region on their left (docs/src/argument_principle.md, Labels).

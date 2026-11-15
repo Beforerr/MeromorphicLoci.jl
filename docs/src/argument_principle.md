@@ -34,7 +34,7 @@ Firing cells split down to `zres`. The rest go dark.
 ```@example ap
 using MeromorphicLoci, CairoMakie, Base64
 using MeromorphicLoci: Lattice, Memo, Cell, Tree,
-    _zcorners, _refine!, _certify!, _vote, _group, _outline, _mixed, _deepen!,
+    _zcorners, _refine!, _certify!, _outlined, _group, _outline, _mixed, _deepen!,
     _polygon_winding, _cellwinding, _qstep, quadrant, _darkleaves
 
 const GREEN, RED, GREY = "#389826", "#CB3C33", "#777777"
@@ -87,8 +87,9 @@ function outline(tree, cells)
     vs, edges = _outline(lat, cells)
     pts = NTuple{2,Float64}[]
     _polygon_winding(p -> (append!(pts, p); tree.memo(p)), vs, edges)
+    w, lo, hi = _outlined(tree, cells)
     segs = [Point2f(reim(lat[vs[i]])...) for e in edges for i in e]
-    return (; segs, w=_vote(tree, cells), mixed=_mixed(tree.memo, cells), pts=[Point2f(reim(lat[p])...) for p in pts])
+    return (; segs, w, mixed=!isnothing(w) && _mixed(tree.memo, cells, lo, hi), pts=[Point2f(reim(lat[p])...) for p in pts])
 end
 
 f = z -> (z - 0.3) * (z + 0.4im)^2 / (z - 0.6)
@@ -229,8 +230,9 @@ finds some; the box counts 8, so the dark cells that wind are searched again.*
   holds no other group's cells.
 - Outlines are integrated adaptively: each edge is bisected until every step turns the
   phase by less than π/2 and changes |f| by less than 2×.
-- A group whose cells' walks show both signs may hold a zero and a pole that a net vote
-  hides, e.g. a simple zero beside a double pole votes −1.
+- A group is **mixed** if its vote may hide loci of both kinds, e.g. a simple zero beside
+  a double pole votes −1. By the maximum modulus principle, a cell corner with |f| above
+  the outline's maximum implies a pole inside, below its minimum a zero; both means mixed.
 
 ```@raw html
 <details><summary>Code</summary>
@@ -267,8 +269,9 @@ a simple zero, a simple pole and a double zero at `zres = 0.05`.*
 
 ## Escalation
 
-- A group whose cells show both signs, votes 0, or cannot be read is refined one level
-  below `zres`, regrouped and labelled again, up to `zoom` levels.
+- A group that is mixed, votes 0, or cannot be read is refined one level below `zres`,
+  regrouped and labelled again, up to `zoom` levels. At the last level a nonzero vote
+  stands, mixed or not.
 - A group that votes 0 or cannot be read, and has nothing firing one level finer, is
   dropped: its cells fired on a misread phase (a locus just outside the box, a phase
   turning faster than a cell), not on a locus.
@@ -281,12 +284,14 @@ a simple zero, a simple pole and a double zero at `zres = 0.05`.*
 ```
 
 ```@example ap
-# One panel per level until every group is labelled.
+# One row per function, one panel per level until every group is labelled.
 rows = [
     (; f=z -> (z - 0.985 - 0.011im) / (z - 1.012 - 0.006im), box=(0 - 0.4im, 2 + 0.4im), zres=0.05,
         zeros=[0.985 + 0.011im], poles=[1.012 + 0.006im], view=(0.94 - 0.04im, 1.06 + 0.06im)),
+    (; f=z -> (z - 0.52 - 0.33im) / (z - 0.52 - 0.33im - 0.02cispi(0.25))^2, box=BOX, zres=0.02,
+        zeros=[0.52 + 0.33im], poles=[0.52 + 0.33im + 0.02cispi(0.25)], view=(0.488 + 0.305im, 0.572 + 0.375im)),
 ]
-fig = Figure(; size=(580, 250))
+fig = Figure(; size=(580, 480))
 for (r, (; f, box, zres, zeros, poles, view)) in enumerate(rows)
     local tree, cells = search(f, box, ArgumentPrinciple(; zres))
     undecided(g) = (o = outline(tree, g); o.mixed || something(o.w, 0) == 0)
@@ -320,9 +325,10 @@ nothing # hide
 embed(fig, "escalation") # hide
 ```
 
-*A zero (○) and a pole (×) 0.027 apart at `zres = 0.05` form one group voting 0; two levels
-finer they split. Cells are green, red or grey as their group votes positive, negative or
-0.*
+*Top: a zero (○) and a pole (×) 0.027 apart at `zres = 0.05` form one group voting 0; two
+levels finer they split. Bottom: a zero beside a double pole 0.02 apart at `zres = 0.02`
+votes −1, mixed; one level finer they split. Cells are green, red or grey as their group
+votes positive, negative or 0.*
 
 ## What can go wrong
 
@@ -333,3 +339,4 @@ finer they split. Cells are green, red or grey as their group votes positive, ne
 | k-fold locus centred in a cell | walk misreads it (triple −4, 4-fold 0) at every scale, since (z − z0)^k is scale-free | certificate |
 | Simple locus with a second one hugging the same edge | can slip past walk and guard | certificate, or fused into its partner's label |
 | k-fold locus on a lattice point | only cells beside it fire; outlines through it can't be read and it is dropped | flagged by `deficit` |
+| Zero and pole of different orders closer than about a cell (two for order 3) | not mixed: labelled one locus of their net winding | nothing (the count agrees) |
