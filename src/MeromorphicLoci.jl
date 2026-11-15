@@ -10,13 +10,20 @@ end
 """
     findzeros(f, zdomain, alg; polish = Muller(), mapper = map)
 
-Zeros of `f(z)` over `zdomain`, found by `alg` ([`ArgumentPrinciple`](@ref) or
-[`AAA`](@ref)). The result is described in the README (`?MeromorphicLoci`).
-Where `f` overflows to `Inf` or underflows to 0 its phase is unreadable, and loci there go
-unfound: divide out exponential growth, or shrink the box.
+Zeros of `f(z)` in the box `zdomain = (zlo, zhi)` of opposite corners.
+Returns a named tuple:
 
-`mapper(f, zs)` evaluates `f` at a batch of points,
-a threaded map such as `OhMyThreads.tmap` parallelizes an expensive `f`.
+- `points`: sorted by real, then imaginary part.
+- `windings`: multiplicity, negative for a pole. Points closer than `alg` resolves merge
+  into one of their summed winding.
+- `converged`: whether `polish` ([`Muller`](@ref)) met its tolerance. Only points of
+  winding ±1 are polished; `polish = nothing` keeps the estimates of `alg`.
+- `unresolved`: zeros or poles detected but not classified.
+- `nevals`: evaluations of `f`.
+- `fitconverged` ([`AAA`](@ref)) or `deficit` ([`ArgumentPrinciple`](@ref)).
+
+Zeros and poles where `f` overflows to `Inf` or underflows to 0 go unfound: divide out
+exponential growth, or shrink the box.
 """
 findzeros(f, zdomain, alg; polish=Muller(), mapper=map) = _points(f, zdomain, alg, Val(1), polish, mapper)
 
@@ -30,7 +37,8 @@ findpoles(f, zdomain, alg; polish=Muller(), mapper=map) = _points(f, zdomain, al
 """
     findzeropoles(f, zdomain, alg; polish = Muller(), mapper = map)
 
-Zeros and poles of `f(z)`; otherwise as [`findzeros`](@ref).
+Zeros and poles of `f(z)` from one search, costing little more than either alone;
+otherwise as [`findzeros`](@ref).
 """
 findzeropoles(f, zdomain, alg; polish=Muller(), mapper=map) = _points(f, zdomain, alg, Val(0), polish, mapper)
 

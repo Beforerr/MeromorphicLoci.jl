@@ -89,7 +89,7 @@ end
 """
     Muller(; tol = 1e-10, maxiter = 100)
 
-Polish for the simple zeros and poles using [`muller`](@ref) from each estimate.
+`muller` polish for the simple zeros and poles from each estimate.
 """
 Base.@kwdef struct Muller
     tol::Float64 = 1.0e-10

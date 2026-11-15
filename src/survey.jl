@@ -11,12 +11,14 @@ end
 """
     Branch{M} <: AbstractVector{Sample{M}}
 
-The loci over `M` parameters that following connects, as their [`Sample`](@ref)s sorted
-by parameters. `b.winding` is their multiplicity, negative for poles, and 0 for a seed
-whose kind could not be read (a branch of that one sample); `b.degree` how many of them
-the branch holds at one parameter point: 1 for a single-valued `z*(p)`.
-`b.uncertified` lists the stretches `(p1, p2)` over which the branch could not be
-certified as one locus ([What is certified](@ref)).
+One locus `z*(p)` followed over `M` parameters, as [`Sample`](@ref)s sorted by parameter.
+
+- `b.winding`: the multiplicity; 0 for a lone sample whose kind could not be read.
+- `b.degree`: how many loci the branch joins at one parameter point
+  ([Several parameters](@ref)); 1 for a single-valued `z*(p)`.
+- `b.uncertified`: stretches `(p1, p2)` where another locus came within `zfloor`, so the
+  branch may have switched to it, and `(p, p)` where following stopped at `p`
+  ([What is certified](@ref)).
 """
 struct Branch{M} <: AbstractVector{Sample{M}}
     samples::Vector{Sample{M}}
@@ -41,10 +43,11 @@ Base.show(io::IO, b::Branch) = summary(io, b)
 """
     Survey{M} <: AbstractVector{Branch{M}}
 
-The [`Branch`](@ref)es [`findloci`](@ref) found over `M` parameters. `s.deficit` lists the
-knots where the zeros minus poles in the box, ``N(p)``, differ from the sum of the windings
-``w_b`` of the branches there ([The count](@ref)): `p => n` with ``n = N(p) - \\sum_b w_b``, or
-`p => nothing` where ``N(p)`` cannot be read.
+The [`Branch`](@ref)es over `M` parameters. `s.deficit` lists
+`p => n` at the knots where ``n = N(p) - \\sum_b w_b``, the zeros minus poles in the box
+less the windings of the branches there, is nonzero ([The count](@ref)), and `p => nothing`
+where ``N(p)`` cannot be read. ``n > 0`` means the seed missed loci at `p`. `s.nevals`
+counts the evaluations of `f(p...)(z)`.
 """
 struct Survey{M} <: AbstractVector{Branch{M}}
     branches::Vector{Branch{M}}

@@ -1,26 +1,16 @@
 """
     Continuation(seed; zres = nothing, zfloor = nothing, certify = true)
 
-Loci over parameters, for [`findloci`](@ref): the point finder `seed` ([`AAA`](@ref) or
-[`ArgumentPrinciple`](@ref)) finds the zeros and poles at the knots of `pdomain`, and each
-is followed between knots by predictor–corrector steps with [`muller`](@ref).
+Loci over parameters for [`findloci`](@ref): the point finder `seed` finds them at the knots, and [`muller`](@ref) follows them
+between. [How it works and what it can miss](@ref continuation).
 
-`pdomain` holds one entry per parameter: an interval `(lo, hi)`, seeded at equispaced
-knots (9 for one parameter, 5 each for more), or a sorted vector of knots. Over several
-parameters the loci are followed along the lines of the knot grid. Choosing knots:
-[Cost](@ref).
-
-- `zres` — the scale of a step's correction. Samples are polished roots whatever its
-  value. `nothing` takes `seed.zres` of an `ArgumentPrinciple` seed, and a quarter of the
-  sample spacing of an `AAA` seed.
-- `zfloor` — loci are told apart down to this distance, at most `zres`; `nothing` takes
-  `zres/256`. Where two come closer, their branches list the stretch in `uncertified`;
-  two closer throughout are one locus of their summed multiplicity.
+- `zres` — the scale of a step's correction. `nothing` takes `seed.zres` of an
+  `ArgumentPrinciple` seed, and a quarter of the sample spacing of an `AAA` seed.
+- `zfloor` — loci closer than this are not told apart (`uncertified` of a
+  [`Branch`](@ref)); two closer throughout are one locus.
+  At most `zres`; `nothing` takes `zres/256`.
 - `certify` — count the zeros minus poles in the box at each knot against the branches
-  there (`deficit` in the [`Survey`](@ref)), the one check that notices a seeder that came
-  up short. An `ArgumentPrinciple` seed counts regardless.
-
-How it works, what is certified and what it can miss: [How `Continuation` follows loci](@ref continuation).
+  (`deficit` of the [`Survey`](@ref)). Always on for an `ArgumentPrinciple` seed.
 """
 struct Continuation{S}
     seed::S
@@ -37,11 +27,12 @@ _zres(seed::AAA, (lo, hi)) = sqrt(prod(reim(hi - lo)) / seed.nsamples) / 4
 _zres(seed, zbox) = throw(ArgumentError("Continuation needs `zres` with a $(typeof(seed)) seed"))
 
 """
-    findloci(f, zdomain, pdomain, alg; mapper = map)
+    findloci(f, zdomain, pdomain, alg; mapper = map) :: Survey
 
-Loci `z*(p)` of the zeros and poles of `f(p...)(z)` over `zdomain` as `p` ranges over
-`pdomain`, as a [`Survey`](@ref), by [`Continuation`](@ref); a point finder `alg`
-([`AAA`](@ref) or [`ArgumentPrinciple`](@ref)) stands for `Continuation(alg)`.
+Loci `z*(p)` of the zeros and poles of `f(p...)(z)` in the box `zdomain = (zlo, zhi)` as `p` ranges over `pdomain`.
+
+`pdomain` holds one entry per parameter: an interval `(lo, hi)`, searched at equispaced
+knots (9 for one parameter, 5 each for more), or a sorted vector of knots.
 """
 findloci(f, zdomain, pdomain, alg::Union{AAA,ArgumentPrinciple}; mapper=map) =
     findloci(f, zdomain, pdomain, Continuation(alg); mapper)

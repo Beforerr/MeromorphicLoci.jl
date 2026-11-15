@@ -1,24 +1,22 @@
 """
     AAA(; nsamples = 320, tol = 1e-13, max_degree = 150, stagnation = 5)
 
-Zeros and poles of `f(z)` from a rational fit to its samples (the AAA algorithm).
-`zdomain` is either a box `(zlo, zhi)` of opposite complex
-corners, sampled evenly at about `nsamples` points, with loci reported inside it; or an
-array of sample points, with loci reported wherever the fit finds them.
+Zeros and poles of `f(z)` from a rational fit to its samples. A box `zdomain` is sampled
+evenly at about `nsamples` points, and confirming a candidate near its edge may evaluate
+`f` slightly outside; an array `zdomain` is the samples, with zeros and poles reported
+wherever the fit finds them.
 
-- `nsamples` — the fit finds at most about half as many zeros and poles as it has samples;
-  raise it for a box that holds many.
+- `nsamples` — the fit finds at most about half as many zeros and poles as it has
+  samples, and fewer in practice: 60–100 have needed 1000–4000. Too few miss some
+  silently, with `fitconverged = true`. Use more for features narrower than the spacing.
 - `tol` — the fit stops once it matches the samples to `tol` relative to their largest
-  magnitude, so a locus whose effect on the samples is smaller goes unfound. Noise in `f`
-  above `tol` stalls the fit short (`fitconverged = false`) with spurious and split
-  candidates: the confirming windings drop the first and count the multiplicity of the
-  second, but loci buried in the noise (multiple zeros first) stay lost.
+  magnitude; a zero or pole whose effect on them is smaller goes unfound. Noise in `f`
+  above `tol` stalls the fit (`fitconverged = false`); zeros and poles buried in it are lost.
 - `max_degree`, `stagnation` — the fit stops at this degree, or after this many steps
   without improving.
 
-`unresolved` lists candidates `f` was too noisy or undefined around to confirm. 
-Samples where `f` is `NaN` are skipped, so return `NaN` where it cannot be trusted. 
-A zero and a pole much closer together than the samples are not reported.
+Samples where `f` is `NaN` are skipped: return `NaN` where `f` cannot be trusted.
+`unresolved` lists candidates where `f` is too noisy or undefined to confirm them.
 """
 Base.@kwdef struct AAA
     nsamples::Int = 320

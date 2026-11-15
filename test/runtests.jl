@@ -48,6 +48,13 @@ end
     end
 end
 
+@testset "README code runs, its asserts included" begin
+    blocks = [m[1] for m in eachmatch(r"```julia\n(.*?)```"s, read(joinpath(pkgdir(MeromorphicLoci), "README.md"), String))]
+    m = Module()
+    signatures = startswith("findzeros(f, zdomain")
+    @test (foreach(b -> include_string(m, b), filter(!signatures, blocks)); true)
+end
+
 @testset "nevals counts every call of f" begin
     for alg in (AAA(), ArgumentPrinciple(zres=0.02)), polish in (Muller(), nothing)
         n = Threads.Atomic{Int}(0)
