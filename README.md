@@ -78,7 +78,7 @@ both and their windings cancel. A smaller `minsep` finds it:
 (`minsep = 0.3 ≫ 0.03` catches the pair only because a cell boundary happens to fall
 between its members; the guarantee needs `minsep < 0.03`.)
 
-![zero and pole loci in 3D](docs/survey.png)
+![zero and pole loci in 3D](docs/src/assets/survey.png)
 
 Without parameters, the point finders report each branch as one point, and winding-0
 branches as `unresolved`:
@@ -89,7 +89,7 @@ r = findzeropoles(z -> (z - 0.3) * (z + 0.4im)^2 / (z - 0.6), (-1 - 1im, 1 + 1im
 @assert r.windings == [2, 1, -1] && isempty(r.unresolved)   # −0.4i, 0.3, 0.6
 ```
 
-How it works: [docs/argument_principle.md](docs/argument_principle.md).
+How it works: [argument_principle.md](docs/src/argument_principle.md).
 [RootsAndPoles.jl](https://github.com/fgasdia/RootsAndPoles.jl) implements SA-GRPF by
 Delaunay triangulation for the `m = 0` problem; [benchmark/compare.jl](./benchmark/compare.jl)
 surveys one 3-D box with one adaptive survey and with 128 independent 2-D RootsAndPoles slices.
@@ -107,7 +107,7 @@ r = findzeros(f, Z, AAA())                     # any sample points; loci whereve
 its zeros), and confirms each candidate by the winding of `f` on a small circle around it,
 which rejects spurious candidates and counts multiplicity (see the `AAA` docstring). `fitconverged = false` means the fit
 stopped short of `tol` and may have missed loci.
-See [docs/aaa.md](docs/aaa.md) for the fit, its cost and what it can miss;
+See [aaa.md](docs/src/aaa.md) for the fit, its cost and what it can miss;
 `benchmark/aaa.jl` compares it against RationalFunctionApproximation.jl and
 BaryRational.jl.
 

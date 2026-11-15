@@ -41,6 +41,6 @@ Legend(fig[0, :],
     ["zero", "pole", "indeterminate"];
     orientation=:horizontal, framevisible=false)
 
-out = joinpath(@__DIR__, "survey.png")
+out = joinpath(@__DIR__, "src", "assets", "survey.png")
 save(out, fig; px_per_unit=2)
 println("wrote ", out)

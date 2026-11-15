@@ -1,3 +1,7 @@
 [deps]
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 MeromorphicLoci = "767268ff-ad81-4cfc-beec-7f34c307b461"
+
+[compat]
+Documenter = "1"

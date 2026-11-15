@@ -1,0 +1,36 @@
+name: Documentation
+on:
+  push:
+    branches: [main]
+    tags: ["*"]
+  pull_request:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      actions: write # lets julia-actions/cache delete the old caches it created
+      contents: write
+      pull-requests: read
+      statuses: write
+    env:
+      # A fixed target keeps cached pkgimages loadable across runner CPUs.
+      JULIA_CPU_TARGET: haswell
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+      - uses: julia-actions/cache@v3
+      - name: Configure doc environment
+        shell: julia --project=docs --color=yes {0}
+        run: |
+          using Pkg
+          Pkg.develop(PackageSpec(path=pwd()))
+          Pkg.instantiate()
+      - uses: julia-actions/julia-buildpkg@v1
+      - run: julia --project=docs --color=yes docs/make.jl
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}

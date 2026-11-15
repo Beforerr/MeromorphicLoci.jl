@@ -193,7 +193,7 @@ end
 
 # The Loewner matrix changes by one column and one zeroed row (the new node's) per step, so
 # its thin QR is updated rather than refactored and the weights come from inverse iteration
-# on R: O(m·n) per step where a fresh SVD costs O(m·n²). Derivation: docs/aaa.md.
+# on R: O(m·n) per step where a fresh SVD costs O(m·n²). Derivation: docs/src/aaa.md.
 function aaa(y, z; tol = 1.0e-13, max_degree = 150, stagnation = 5)
     m = length(z)
     T = promote_type(eltype(z), eltype(y))

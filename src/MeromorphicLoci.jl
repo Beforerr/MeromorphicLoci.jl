@@ -12,7 +12,7 @@ end
     findzeros(f, zdomain, alg; polish = Muller())
 
 Zeros of `f(z)` over `zdomain`, found by `alg` ([`ArgumentPrinciple`](@ref) or
-[`AAA`](@ref)). The result is described in the README, [`MeromorphicLoci`](@ref).
+[`AAA`](@ref)). The result is described in the README (`?MeromorphicLoci`).
 """
 findzeros(f, zdomain, alg; polish=Muller()) = _points(f, zdomain, alg, Val(1), polish)
 
@@ -76,7 +76,7 @@ end
 
 Loci `z*(p)` of the zeros and poles of `f(p...)(z)` over `zdomain` as `p` ranges over
 `pdomain`, by algorithm `alg` ([`ArgumentPrinciple`](@ref)), as a [`Survey`](@ref). The
-result is described in the README, [`MeromorphicLoci`](@ref).
+result is described in the README (`?MeromorphicLoci`).
 """
 findloci(f, zdomain, pdomain, alg) = _loci(f, zdomain, pdomain, alg)
 

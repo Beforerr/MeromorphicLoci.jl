@@ -1,3 +1,5 @@
 /Manifest.toml
 /benchmark/Manifest.toml
 /docs/Manifest.toml
+/docs/build/
+/docs/src/index.md

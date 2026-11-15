@@ -29,7 +29,7 @@ What else it can miss or leave indeterminate:
   say) fuses with every locus crossing it; divide such factors out of `f` first.
 
 `f` is evaluated across all Julia threads: `f(p...)` and the functions it returns must be
-thread-safe. How the search works: `docs/argument_principle.md`.
+thread-safe. How the search works: `docs/src/argument_principle.md`.
 """
 struct ArgumentPrinciple
     zres::Float64
@@ -494,7 +494,7 @@ end
     Branch{M} <: AbstractVector{Sample{M}}
 
 One locus `z*(p)` over `M` parameters in a [`Survey`](@ref), as its [`Sample`](@ref)s;
-described in the README, [`MeromorphicLoci`](@ref).
+described in the README (`?MeromorphicLoci`).
 """
 struct Branch{M,C} <: AbstractVector{Sample{M}}
     samples::Vector{Sample{M}}
