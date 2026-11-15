@@ -75,7 +75,7 @@ function search(f, box, alg)
     zbox = _zcorners(box...)
     minsep = Float64(something(alg.minsep, max(abs(zbox[2] - zbox[1]) / 8, alg.zres)))
     lat = Lattice(zbox, alg.zres, minsep)
-    memo = Memo(f, lat)
+    memo = Memo(f, lat, map)
     st = (Int32(1) << lat.kz, Int32(1) << lat.kz)
     roots = [Cell(memo, (Int32(i - 1) * st[1], Int32(j - 1) * st[2]), st) for i in 1:(lat.zn[1]>>lat.kz), j in 1:(lat.zn[2]>>lat.kz)]
     tree = Tree(memo, roots)

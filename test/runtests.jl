@@ -2,6 +2,8 @@ using MeromorphicLoci
 using MeromorphicLoci: quadrant, nevals
 using Test
 
+tmap(g, xs) = fetch.([Threads.@spawn g(x) for x in xs])
+
 # half-open boundaries: 1:[0,π/2) 2:[π/2,π] 3:(-π,-π/2) 4:[-π/2,0)
 @testset "quadrant logic" begin
     @test quadrant(1 + 0.1im) == 1
@@ -48,6 +50,7 @@ end
         f(z) = (Threads.atomic_add!(n, 1); (z - 0.3) * (z + 0.4im)^2 / (z - 0.6))
         r = findzeropoles(f, (-1 - 1im, 1 + 1im), alg; polish)
         @test r.nevals == n[]
+        @test findzeropoles(f, (-1 - 1im, 1 + 1im), alg; polish, mapper=tmap) == r
     end
     # the search, the certificate and the votes share their points: none is evaluated twice
     seen = ComplexF64[]

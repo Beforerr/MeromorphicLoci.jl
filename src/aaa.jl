@@ -55,10 +55,10 @@ end
 # Candidates within spacing/1000 are one locus. Noise splits a multiple locus wider, and each
 # fragment's circle misses it or drowns in noise, so leftovers are retried as clusters (up to
 # spacing/2) on one circle enclosing them; f unusable there gives one `unresolved` per cluster.
-function _enclose(f, zdomain, alg::AAA, ::Val{W}) where {W}
+function _enclose(f, zdomain, alg::AAA, ::Val{W}, mapper) where {W}
     Z, inside = _region(zdomain, alg.nsamples)
     spacing = _spacing(Z)
-    (; fit, nevals, converged) = _fit(W == -1 ? f : inv ∘ f, Z, alg)
+    (; fit, nevals, converged) = _fit(W == -1 ? f : inv ∘ f, Z, alg, mapper)
     zc, pc = W == -1 ? (_zeros(fit), poles(fit)) : (poles(fit), _zeros(fit))
     # A zero and a pole as close as one locus's candidates cancel: noise fills the fit with such
     # Froissart doublets, which f does not show, so they neither count nor bound a circle.
@@ -128,8 +128,8 @@ end
 
 # A zero or non-finite value is dropped: fitting it would spend the fit's degree on its error.
 # So is a sample on a pole of `g` (`_off_locus`).
-function _fit(g, Z, alg::AAA)
-    y = map(g, Z)
+function _fit(g, Z, alg::AAA, mapper)
+    y = map(identity, mapper(g, Z))    # concrete, whatever eltype `mapper` returns
     ok = map(_is_valid, y)
     nevals = length(ok)
     Z, y = Z[ok], y[ok]

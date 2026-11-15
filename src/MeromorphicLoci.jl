@@ -8,29 +8,31 @@ export findzeros, findpoles, findzeropoles, AAA, ArgumentPrinciple, Muller
 end
 
 """
-    findzeros(f, zdomain, alg; polish = Muller())
+    findzeros(f, zdomain, alg; polish = Muller(), mapper = map)
 
 Zeros of `f(z)` over `zdomain`, found by `alg` ([`ArgumentPrinciple`](@ref) or
 [`AAA`](@ref)). The result is described in the README (`?MeromorphicLoci`).
 Where `f` overflows to `Inf` or underflows to 0 its phase is unreadable, and loci there go
 unfound: divide out exponential growth, or shrink the box.
 
+`mapper(f, zs)` evaluates `f` at a batch of points,
+a threaded map such as `OhMyThreads.tmap` parallelizes an expensive `f`.
 """
-findzeros(f, zdomain, alg; polish=Muller()) = _points(f, zdomain, alg, Val(1), polish)
+findzeros(f, zdomain, alg; polish=Muller(), mapper=map) = _points(f, zdomain, alg, Val(1), polish, mapper)
 
 """
-    findpoles(f, zdomain, alg; polish = Muller())
+    findpoles(f, zdomain, alg; polish = Muller(), mapper = map)
 
 Poles of `f(z)`; otherwise as [`findzeros`](@ref).
 """
-findpoles(f, zdomain, alg; polish=Muller()) = _points(f, zdomain, alg, Val(-1), polish)
+findpoles(f, zdomain, alg; polish=Muller(), mapper=map) = _points(f, zdomain, alg, Val(-1), polish, mapper)
 
 """
-    findzeropoles(f, zdomain, alg; polish = Muller())
+    findzeropoles(f, zdomain, alg; polish = Muller(), mapper = map)
 
 Zeros and poles of `f(z)`; otherwise as [`findzeros`](@ref).
 """
-findzeropoles(f, zdomain, alg; polish=Muller()) = _points(f, zdomain, alg, Val(0), polish)
+findzeropoles(f, zdomain, alg; polish=Muller(), mapper=map) = _points(f, zdomain, alg, Val(0), polish, mapper)
 
 # A locus estimate: centre `z`, winding `w` (0 if unknown), radius `r` holding no other locus.
 struct Locus
@@ -40,7 +42,7 @@ struct Locus
 end
 
 """
-    _enclose(f, zdomain, alg, ::Val{W}) -> (; loci::Vector{Locus}, nevals, info, pad)
+    _enclose(f, zdomain, alg, ::Val{W}, mapper) -> (; loci::Vector{Locus}, nevals, info, pad)
 
 Implemented by each point-finding algorithm `alg`.
 """
@@ -49,8 +51,8 @@ function _enclose end
 # complex x/0 is NaN while 1/f → 0
 _reciprocal(f) = z -> (w = f(z); isfinite(w) ? inv(w) : zero(w))
 
-function _points(f, zdomain, alg, ::Val{W}, polish) where {W}
-    (; loci, nevals, info, pad) = _enclose(f, zdomain, alg, Val(W))
+function _points(f, zdomain, alg, ::Val{W}, polish, mapper) where {W}
+    (; loci, nevals, info, pad) = _enclose(f, zdomain, alg, Val(W), mapper)
     keep = zdomain isa Tuple{Number,Number} ? (z -> _inside(_zcorners(zdomain...), z, pad)) : Returns(true)
     found = @NamedTuple{z::ComplexF64, w::Int, converged::Bool}[]
     unresolved = ComplexF64[]

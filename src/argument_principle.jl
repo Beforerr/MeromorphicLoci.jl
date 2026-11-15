@@ -35,11 +35,11 @@ ArgumentPrinciple(; zres, minsep=nothing, zoom=4) = ArgumentPrinciple(Float64(zr
 # One locus per labelled group of cells, at the mean of its cell centres. The mean is
 # within a cell of the locus, but an escalated group can sit nearer another than that,
 # hence the reach.
-function _enclose(f, zdomain, alg::ArgumentPrinciple, ::Val)
+function _enclose(f, zdomain, alg::ArgumentPrinciple, ::Val, mapper)
     zbox = _zcorners(zdomain...)
     minsep = Float64(something(alg.minsep, max(abs(zbox[2] - zbox[1]) / 8, alg.zres)))
     lat = Lattice(zbox, alg.zres, minsep)
-    memo = Memo(f, lat)
+    memo = Memo(f, lat, mapper)
     st = (Int32(1) << lat.kz, Int32(1) << lat.kz)
     roots = [Cell(memo, (Int32(i - 1) * st[1], Int32(j - 1) * st[2]), st) for i in 1:(lat.zn[1]>>lat.kz), j in 1:(lat.zn[2]>>lat.kz)]
     tree = Tree(memo, roots)
@@ -138,15 +138,16 @@ _zcenter(lat::Lattice, c::Cell) = complex(
 
 # `f` on the lattice, shared by the search, the certificate and the votes. `_slot!` claims a
 # point's slot in `vals` and queues it; `_fill!` evaluates the queue as one batch.
-struct Memo{F}
+struct Memo{F,P}
     f::F
     lat::Lattice
     slot::Dict{NTuple{2,Int32},Int32}
     vals::Vector{ComplexF64}
     queue::Vector{NTuple{2,Int32}}
     off::Base.RefValue{Int}    # evaluations off the lattice
+    mapper::P
 end
-Memo(f, lat) = Memo(f, lat, Dict{NTuple{2,Int32},Int32}(), ComplexF64[], NTuple{2,Int32}[], Ref(0))
+Memo(f, lat, mapper) = Memo(f, lat, Dict{NTuple{2,Int32},Int32}(), ComplexF64[], NTuple{2,Int32}[], Ref(0), mapper)
 
 nevals(m::Memo) = length(m.vals) + m.off[]
 
@@ -157,7 +158,7 @@ function _slot!(m::Memo, ix)
 end
 
 function _fill!(m::Memo)
-    append!(m.vals, map(m.f, [m.lat[ix] for ix in m.queue]))
+    append!(m.vals, m.mapper(m.f, [m.lat[ix] for ix in m.queue]))
     empty!(m.queue)
     return
 end
@@ -173,7 +174,7 @@ function (m::Memo)(pts)
     _fill!(m)
     vals = [s == 0 ? complex(NaN) : m.vals[s] for s in slots]
     off = findall(iszero, slots)
-    vals[off] = map(m.f, [m.lat[pts[i]] for i in off])
+    vals[off] = m.mapper(m.f, [m.lat[pts[i]] for i in off])
     m.off[] += length(off)
     return vals
 end
