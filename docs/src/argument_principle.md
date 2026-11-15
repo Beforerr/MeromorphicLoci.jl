@@ -81,7 +81,7 @@ function outline(memo, cells)
 end
 
 f = z -> (z - 0.3) * (z + 0.4im)^2 / (z - 0.6)
-memo, cells, dark = _search(f, BOX, ArgumentPrinciple(zres=0.05), map)
+memo, cells, dark = _search(f, BOX, ArgumentPrinciple(zres=0.05, minsep=0.18), map)
 fig = Figure(; size=(420, 400))
 ax = Axis(fig[1, 1]; aspect=DataAspect(), xlabel="Re z", ylabel="Im z")
 phase!(ax, f, BOX...)
@@ -229,7 +229,7 @@ finds some; the box counts 8, so the dark cells that wind are searched again.*
 ```@example ap
 zs, ps = [0.10 + 0.07im, -0.2 - 0.15im], [0.27 + 0.12im]
 f = z -> (z - zs[1]) * (z - zs[2])^2 / (z - ps[1])
-memo, cells, _ = _search(f, BOX, ArgumentPrinciple(zres=0.05), map)
+memo, cells, _ = _search(f, BOX, ArgumentPrinciple(zres=0.05, minsep=0.18), map)
 fig = Figure(; size=(500, 380))
 ax = Axis(fig[1, 1]; aspect=DataAspect(), xlabel="Re z", ylabel="Im z")
 phase!(ax, f, -0.42 - 0.36im, 0.5 + 0.32im)
@@ -274,14 +274,14 @@ a simple zero, a simple pole and a double zero at `zres = 0.05`.*
 ```@example ap
 # One row per function, one panel per level until every group is labelled.
 rows = [
-    (; f=z -> (z - 0.985 - 0.011im) / (z - 1.012 - 0.006im), box=(0 - 0.4im, 2 + 0.4im), zres=0.05,
+    (; f=z -> (z - 0.985 - 0.011im) / (z - 1.012 - 0.006im), box=(0 - 0.4im, 2 + 0.4im), zres=0.05, minsep=0.135,
         zeros=[0.985 + 0.011im], poles=[1.012 + 0.006im], view=(0.94 - 0.04im, 1.06 + 0.06im)),
-    (; f=z -> (z - 0.52 - 0.33im) / (z - 0.52 - 0.33im - 0.02cispi(0.25))^2, box=BOX, zres=0.02,
+    (; f=z -> (z - 0.52 - 0.33im) / (z - 0.52 - 0.33im - 0.02cispi(0.25))^2, box=BOX, zres=0.02, minsep=0.18,
         zeros=[0.52 + 0.33im], poles=[0.52 + 0.33im + 0.02cispi(0.25)], view=(0.488 + 0.305im, 0.572 + 0.375im)),
 ]
 fig = Figure(; size=(580, 480))
-for (r, (; f, box, zres, zeros, poles, view)) in enumerate(rows)
-    local memo, cells = _search(f, box, ArgumentPrinciple(; zres), map)
+for (r, (; f, box, zres, minsep, zeros, poles, view)) in enumerate(rows)
+    local memo, cells = _search(f, box, ArgumentPrinciple(; zres, minsep), map)
     undecided(g) = (o = outline(memo, g); o.mixed || something(o.w, 0) == 0)
     levels = [_group(cells)]
     while any(undecided, levels[end]) && length(levels) < 3

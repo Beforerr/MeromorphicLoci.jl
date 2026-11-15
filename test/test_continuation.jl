@@ -13,7 +13,7 @@ end
 @testset "a zero grazing a pole 0.004 apart: one branch each, on the loci" begin
     f(p) = z -> (z - 0.8cispi(p)) / (z - 0.804cispi(-p + 0.3))
     loci(p) = (0.8cispi(p), 0.804cispi(-p + 0.3))
-    for (alg, cap) in ((AAA(), 4500), (Continuation(ArgumentPrinciple(zres=0.02)), 4400))
+    for (alg, cap) in ((AAA(), 4500), (Continuation(ArgumentPrinciple(zres=0.02, minsep=0.18)), 5500))
         s = findloci(f, box, ((0.0, 1.0),), alg)
         @test winding.(s) == [-1, 1] && onloci(s, loci)
         @test all(b -> prange(b) == (0.0, 1.0) && isempty(b.uncertified), s) && isempty(s.deficit)
@@ -87,7 +87,7 @@ end
     @test winding.(s) == [-1, 2] && all(b -> prange(b) == (0.0, 1.0) && isempty(b.uncertified), s)
     # the seeder reads the pair, 0.01 apart, as one double zero at both knots
     pair(p) = z -> (z - 0.3 - 0.2p) * (z - 0.31 - 0.2p)
-    seed = ArgumentPrinciple(zres=0.02)
+    seed = ArgumentPrinciple(zres=0.02, minsep=0.18)
     @test findzeros(pair(0.0), box, seed).windings == findzeros(pair(0.75), box, seed).windings == [2]
     s = findloci(pair, box, ([0.0, 0.75],), Continuation(seed))
     @test winding.(s) == [1, 1] && onloci(s, p -> (0.3 + 0.2p, 0.31 + 0.2p))
@@ -123,7 +123,7 @@ end
 
 @testset "a locus the seeder misses at a knot is carried there by its track" begin
     # the pair is closer than the seeder's `minsep` at p = q only, where its windings cancel
-    seed = ArgumentPrinciple(zres=0.02)
+    seed = ArgumentPrinciple(zres=0.02, minsep=0.18)
     z0 = 0.3 + 0.2im
     ks = [0.0, 0.5, 1.0]
     for q in (0.0, 0.5)    # carried from the middle knot into both ends, and through the middle one
@@ -144,7 +144,7 @@ end
 @testset "a seed that cannot be followed is a branch of one sample" begin
     # zoom = 0 leaves the pair, 0.005 apart, unresolved at each knot
     s = findloci(p -> z -> (z - 0.5) / (z - 0.505), box, ([0.0, 1.0],),
-        Continuation(ArgumentPrinciple(zres=0.02, zoom=0)))
+        Continuation(ArgumentPrinciple(zres=0.02, minsep=0.18, zoom=0)))
     @test length(s) == 2 && all(b -> winding(b) == 0 && length(b) == 1, s)
     @test [b.uncertified for b in s] == [[((0.0,), (0.0,))], [((1.0,), (1.0,))]]
 end
@@ -188,7 +188,7 @@ end
     @test_throws ArgumentError findloci(t -> z -> z, zbox, ([0.5],), AAA())
     @test_throws ArgumentError findloci(t -> z -> z, zbox, ([0.0, 1.0],), Continuation(AAA(); zres=0.01, zfloor=0.02))
     # a point finder stands for Continuation seeded by it
-    s = findloci(t -> z -> z - (1.0 + 0.01t), zbox, ([0.0, 1.0],), ArgumentPrinciple(zres=0.02))
+    s = findloci(t -> z -> z - (1.0 + 0.01t), zbox, ([0.0, 1.0],), ArgumentPrinciple(zres=0.02, minsep=0.18))
     @test s isa AbstractVector{<:Branch} && winding(only(s)) == 1
 end
 

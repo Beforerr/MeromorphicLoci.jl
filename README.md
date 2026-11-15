@@ -86,8 +86,7 @@ How it works and what is certified: [continuation.md](docs/src/continuation.md).
 ## Argument principle
 
 ```julia
-r = findzeropoles(z -> (z - 0.3) * (z + 0.4im)^2 / (z - 0.6), (-1 - 1im, 1 + 1im),
-                  ArgumentPrinciple(zres = 0.01))
+r = findzeropoles(z -> (z - 0.3) * (z + 0.4im)^2 / (z - 0.6), (-1 - 1im, 1 + 1im), ArgumentPrinciple(zres = 0.01, minsep = 0.18))
 @assert r.windings == [2, 1, -1] && isempty(r.unresolved)   # −0.4i, 0.3, 0.6
 @assert r.deficit == 0
 ```
@@ -98,8 +97,8 @@ and labelled by the winding of `f` around each group. A zero–pole pair closer 
 `minsep` below their separation finds it, at higher cost:
 
 ```julia
-pair(z) = (z + 0.10 + 0.12im) / (z + 0.13 + 0.12im)   # 0.03 apart
-@assert isempty(findzeropoles(pair, zbox, ArgumentPrinciple(zres = 0.02)).points)
+pair(z) = (z + 0.17 + 0.18im) / (z + 0.20 + 0.18im)   # 0.03 apart
+@assert isempty(findzeropoles(pair, zbox, ArgumentPrinciple(zres = 0.02, minsep = 0.175)).points)
 @assert findzeropoles(pair, zbox, ArgumentPrinciple(zres = 0.02, minsep = 0.025)).windings == [-1, 1]
 ```
 

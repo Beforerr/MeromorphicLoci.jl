@@ -1,5 +1,5 @@
 """
-    ArgumentPrinciple(; zres, minsep = nothing, zoom = 4)
+    ArgumentPrinciple(; zres, minsep, zoom = 4)
 
 Zeros and poles of `f(z)` in the box `zdomain = (zlo, zhi)` by
 adaptive refinement of cells where the phase of `f` winds.
@@ -7,13 +7,11 @@ adaptive refinement of cells where the phase of `f` winds.
 - `zres` — resolution of the points before the polish, and the scale at which loci are
   told apart: loci closer than about `zres` fuse into one of their net winding, e.g. two
   simple zeros read as one double zero.
-- `minsep` — cells are refined to this size before any is discarded. A zero and a pole
-  closer than `minsep` can cancel inside one cell and vanish silently, so keep it below
-  their closest spacing; below `zres`, it is the resolution in place of `zres`. Loci of
-  one kind closer than `minsep` can escape the search; the box's count recovers them at
-  extra cost (`deficit` below). `minsep` also sets the cost floor, about
-  `2·area/minsep²` evaluations. `nothing` means the box diagonal / 8, or `zres` if that
-  is coarser.
+- `minsep` — the closest zero–pole spacing the search must see. Cells are refined to this
+  size before any is discarded, and a zero and a pole closer than `minsep` can cancel
+  inside one cell and vanish silently. Loci of one kind closer than `minsep` can escape the search; the box's count recovers
+  them at extra cost (`deficit` below). `minsep` also sets the cost floor, about
+  `2·area/minsep²` evaluations.
 - `zoom` — halvings below `zres`, at most 8, to separate a fused zero–pole pair. A pair of
   equal orders closer than `zres/2^zoom` is reported `unresolved`; one of different orders
   closer than about `zres` stays fused, as one locus of their net winding.
@@ -27,16 +25,21 @@ can't see one missed.
 """
 struct ArgumentPrinciple
     zres::Float64
-    minsep::Union{Nothing,Float64}
+    minsep::Float64
     zoom::Int
+    function ArgumentPrinciple(zres, minsep, zoom)
+        zres > 0 || throw(ArgumentError("zres must be positive, got $zres"))
+        minsep > 0 || throw(ArgumentError("minsep must be positive, got $minsep"))
+        0 ≤ zoom ≤ _HEADROOM || throw(ArgumentError("zoom must be in 0:$_HEADROOM, got $zoom"))
+        return new(zres, minsep, zoom)
+    end
 end
-ArgumentPrinciple(; zres, minsep=nothing, zoom=4) = ArgumentPrinciple(Float64(zres), minsep, zoom)
+ArgumentPrinciple(; zres, minsep, zoom=4) = ArgumentPrinciple(Float64(zres), Float64(minsep), zoom)
 
 # The search: `f` on the lattice, the cells firing at `zres`, and the dark cells.
 function _search(f, zdomain, alg::ArgumentPrinciple, mapper)
     zbox = _zcorners(zdomain...)
-    minsep = Float64(something(alg.minsep, max(abs(zbox[2] - zbox[1]) / 8, alg.zres)))
-    lat = Lattice(zbox, alg.zres, minsep)
+    lat = Lattice(zbox, alg.zres, alg.minsep)
     memo = Memo(f, lat, mapper)
     roots = _cells(memo, (Int32(0), Int32(0)), (Int32(1) << lat.kz, Int32(1) << lat.kz), lat.zn .>> lat.kz)
     dark = Cell[]
@@ -94,7 +97,6 @@ function _zroots(w, dbase)
 end
 
 function Lattice(zbox, zres, minsep)
-    zres > 0 || throw(ArgumentError("zres must be positive, got $zres"))
     zlo, zhi = zbox
     w = (real(zhi) - real(zlo), imag(zhi) - imag(zlo))
     all(>(0), w) || throw(ArgumentError("the z-box must have positive width and height, got $zbox"))
