@@ -45,6 +45,7 @@ function _muller(f, x0, x1, x2, center, radius; tol = 1.0e-10, maxiter = 100)
         denom == 0 && return (; root = best, converged = false, nevals)
 
         dx = -2c / denom
+        isfinite(dx) || return (; root = best, converged = false, nevals)
         step = abs(dx)
         while abs(x2 + dx - center) > radius
             dx /= 2
