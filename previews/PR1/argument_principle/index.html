@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><meta name="referrer" content="no-referrer"/><title>ArgumentPrinciple · MeromorphicLoci.jl</title><meta name="title" content="ArgumentPrinciple · MeromorphicLoci.jl"/><meta property="og:title" content="ArgumentPrinciple · MeromorphicLoci.jl"/><meta property="twitter:title" content="ArgumentPrinciple · MeromorphicLoci.jl"/><meta name="description" content="Documentation for MeromorphicLoci.jl."/><meta property="og:description" content="Documentation for MeromorphicLoci.jl."/><meta property="twitter:description" content="Documentation for MeromorphicLoci.jl."/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.63.2/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">MeromorphicLoci.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../aaa/">AAA</a></li><li class="is-active"><a class="tocitem" href>ArgumentPrinciple</a><ul class="internal"><li><a class="tocitem" href="#Cells"><span>Cells</span></a></li><li><a class="tocitem" href="#Search"><span>Search</span></a></li><li><a class="tocitem" href="#Labels"><span>Labels</span></a></li><li><a class="tocitem" href="#Escalation"><span>Escalation</span></a></li><li><a class="tocitem" href="#What-can-go-wrong"><span>What can go wrong</span></a></li></ul></li><li><a class="tocitem" href="../api/">API</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>ArgumentPrinciple</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>ArgumentPrinciple</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/Beforerr/MeromorphicLoci.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/Beforerr/MeromorphicLoci.jl/blob/main/docs/src/argument_principle.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="How-ArgumentPrinciple-works"><a class="docs-heading-anchor" href="#How-ArgumentPrinciple-works">How <code>ArgumentPrinciple</code> works</a><a id="How-ArgumentPrinciple-works-1"></a><a class="docs-heading-anchor-permalink" href="#How-ArgumentPrinciple-works" title="Permalink"></a></h1><p><code>ArgumentPrinciple</code> finds the zeros and poles (<strong>loci</strong>) of <code>f</code> in a box in three steps:</p><ol><li><strong>Search</strong>: refine a mesh of cells toward loci, reading only the phase of <code>f</code> at cell corners.</li><li><strong>Label</strong>: group the cells and count each group by the argument principle.</li><li><strong>Escalate</strong>: refine groups whose label is unclear.</li></ol><h2 id="Cells"><a class="docs-heading-anchor" href="#Cells">Cells</a><a id="Cells-1"></a><a class="docs-heading-anchor-permalink" href="#Cells" title="Permalink"></a></h2><ul><li>The box is tiled by near-square root cells of diagonal at most <code>minsep</code>.</li><li>Cells halve down to <code>zres</code>, and up to <code>zoom</code> levels further when escalating.</li><li>Cells stay near-square whatever the box&#39;s shape: four corners of a long, thin cell miss phase turns.</li></ul><h2 id="Search"><a class="docs-heading-anchor" href="#Search">Search</a><a id="Search-1"></a><a class="docs-heading-anchor-permalink" href="#Search" title="Permalink"></a></h2><p>Cells are refined breadth-first. A cell <strong>fires</strong>, and is split further, when either check says it may hold a locus:</p><ul><li><strong>Walk</strong>: step the quadrant of <code>f</code> around its four corners. A nonzero winding fires (+4 for a simple zero, −4 for a simple pole), and so does a jump across two quadrants, whose direction is ambiguous.</li><li><strong>Guard</strong>: the corners, plus the midpoints of edges that change quadrant, show at least 3 quadrants. Then both Re f = 0 and Im f = 0 cross the cell, and they meet only at loci.</li></ul><p>Firing cells split down to <code>zres</code>. The rest go dark.</p><details><summary>Code</summary><pre><code class="language-julia hljs">using MeromorphicLoci, CairoMakie
+using MeromorphicLoci: Lattice, Memo, Cell, Tree,
+    _zcorners, _refine!, _group, _outline, _vote, _mixed, _deepen!, _polygon_winding,
+    _cellwinding, _qstep, quadrant, _DARK
+
+const GREEN, RED, GREY = &quot;#389826&quot;, &quot;#CB3C33&quot;, &quot;#777777&quot;
+const QCOLORS = [&quot;#E69F00&quot;, &quot;#56B4E9&quot;, &quot;#009E73&quot;, &quot;#CC79A7&quot;]   # quadrants 1–4
+const BOX = (-1 - 1im, 1 + 1im)
+signcolor(w) = isnothing(w) || w == 0 ? GREY : w &gt; 0 ? GREEN : RED
+signed(w) = isnothing(w) ? &quot;unusable&quot; : w &gt; 0 ? &quot;+$w&quot; : w &lt; 0 ? &quot;−$(-w)&quot; : &quot;0&quot;
+
+# Shown at its logical width, so text keeps its size, and rendered at twice that.
+function embed(fig, name)
+    save(&quot;$name.png&quot;, fig; px_per_unit=2)
+    HTML(&quot;&lt;img src=\&quot;$name.png\&quot; width=\&quot;$(size(fig.scene)[1])\&quot; alt=\&quot;$name\&quot;&gt;&quot;)
+end
+
+rect(lat, c::Cell) = Rect2f(reim(lat[c.base])..., c.step[1] * lat.zh[1], c.step[2] * lat.zh[2])
+grid(lo, hi, n) = (range(real(lo), real(hi), n), range(imag(lo), imag(hi), n))
+function phase!(ax, f, lo, hi; n=400)
+    xs, ys = grid(lo, hi, n)
+    heatmap!(ax, xs, ys, [angle(f(complex(x, y))) for x in xs, y in ys];
+        colormap=:phase, colorrange=(-π, π), alpha=0.55)
+    limits!(ax, real(lo), real(hi), imag(lo), imag(hi))
+end
+function loci!(ax, zeros, poles; markersize=13)
+    scatter!(ax, reim.(zeros); marker=:circle, color=:white, strokecolor=:black, strokewidth=1.5, markersize)
+    scatter!(ax, reim.(poles); marker=:xcross, color=:black, markersize)
+end
+# The mesh the search has reached: its dark cells, its evaluations, and a marker on each firing cell.
+function mesh!(ax, memo, cells, dark)
+    lat = memo.lat
+    poly!(ax, rect.(Ref(lat), dark); color=:transparent, strokecolor=(:black, 0.45), strokewidth=0.5)
+    scatter!(ax, [Point2f(reim(lat[ix])...) for ix in keys(memo.slot)]; color=:black, markersize=2)
+    scatter!(ax, [Point2f(reim(lat[c.base.+c.step./2])...) for c in cells]; marker=:rect, color=:black, strokecolor=:white, strokewidth=1, markersize=9)
+end
+# The search as `_enclose` runs it: the tree, and its firing cells at `zres`.
+function search(f, box, alg)
+    zbox = _zcorners(box...)
+    minsep = Float64(something(alg.minsep, max(abs(zbox[2] - zbox[1]) / 8, alg.zres)))
+    lat = Lattice(zbox, alg.zres, minsep)
+    memo = Memo(f, lat)
+    st = (Int32(1) &lt;&lt; lat.kz, Int32(1) &lt;&lt; lat.kz)
+    roots = [Cell(memo, (Int32(i - 1) * st[1], Int32(j - 1) * st[2]), st) for i in 1:(lat.zn[1]&gt;&gt;lat.kz), j in 1:(lat.zn[2]&gt;&gt;lat.kz)]
+    tree = Tree(memo, roots)
+    return tree, _refine!(tree, vec(roots), alg.zres)
+end
+function darkcells(tree)
+    out, stack = Cell[], vec(copy(tree.roots))
+    while !isempty(stack)
+        c = pop!(stack)
+        isempty(c.children) ? (c.state == _DARK &amp;&amp; push!(out, c)) : append!(stack, c.children)
+    end
+    return out
+end
+# Outline of a group in the z-plane, its vote, the points the vote evaluated, and whether it is mixed.
+function outline(tree, cells)
+    lat = tree.memo.lat
+    vs, edges = _outline(lat, cells)
+    pts = NTuple{2,Float64}[]
+    _polygon_winding(p -&gt; (append!(pts, p); tree.memo(p)), vs, edges)
+    segs = [Point2f(reim(lat[vs[i]])...) for e in edges for i in e]
+    return (; segs, w=_vote(tree, cells), mixed=_mixed(tree.memo, cells), pts=[Point2f(reim(lat[p])...) for p in pts])
+end
+
+f = z -&gt; (z - 0.3) * (z + 0.4im)^2 / (z - 0.6)
+tree, cells = search(f, BOX, ArgumentPrinciple(zres=0.05))
+fig = Figure(; size=(420, 400))
+ax = Axis(fig[1, 1]; aspect=DataAspect(), xlabel=&quot;Re z&quot;, ylabel=&quot;Im z&quot;)
+phase!(ax, f, BOX...)
+mesh!(ax, tree.memo, cells, darkcells(tree))</code></pre></details><img src="search.png" width="420" alt="search"><p><em>The search for (z − 0.3)(z + 0.4i)²/(z − 0.6) at <code>zres = 0.05</code>, over the phase of <code>f</code> (hue). Dots are evaluations, squares the cells firing at <code>zres</code>.</em></p><p>The guard is needed because the walk reads each edge as the shortest step: a +270° turn reads −90°. A neighbouring locus can bend an edge that far (middle panel below). Neither check sees a 4-fold zero centred in a cell (right): each edge turns a full 2π, so all corners share one quadrant.</p><details><summary>Code</summary><pre><code class="language-julia hljs"># One cell over the quadrant of f. Corners are in `_quadrants` order.
+function cell!(ax, f, lo, hi; zeros=ComplexF64[], view=(lo, hi))
+    h = hi - lo
+    pad = 0.3 * max(real(view[2] - view[1]), imag(view[2] - view[1]))
+    vlo, vhi = view[1] - pad * (1 + im), view[2] + pad * (1 + im)
+    xs, ys = grid(vlo, vhi, 500)
+    heatmap!(ax, xs, ys, [quadrant(f(complex(x, y))) for x in xs, y in ys];
+        colormap=cgrad(QCOLORS, 4; categorical=true), colorrange=(0.5, 4.5), alpha=0.4)
+    limits!(ax, real(vlo), real(vhi), imag(vlo), imag(vhi))
+    corners = [lo, lo + real(h), lo + imag(h) * im, hi]
+    q = quadrant.(f.(corners))
+    lines!(ax, reim.(corners[[1, 2, 4, 3, 1]]); color=:black, linewidth=2)
+    w = _cellwinding(q)
+    walkfires = isnothing(w) || w != 0
+    seen = Set(q)
+    guarded = !walkfires &amp;&amp; length(seen) &lt; 3   # the only cells whose midpoints are read
+    for (i, j) in ((1, 2), (2, 4), (4, 3), (3, 1))
+        m = (corners[i] + corners[j]) / 2
+        out = (m - (lo + hi) / 2) / abs(m - (lo + hi) / 2)
+        step = _qstep(q[i], q[j])
+        text!(ax, reim(m + 0.12 * abs(h) * out)...; text=isnothing(step) ? &quot;±2&quot; : signed(step),
+            align=(:center, :center), fontsize=15, font=:bold)
+        guarded &amp;&amp; q[i] != q[j] || continue
+        push!(seen, quadrant(f(m)))
+        scatter!(ax, reim(m)...; marker=:diamond, color=QCOLORS[quadrant(f(m))], strokecolor=:black, strokewidth=1.5, markersize=15)
+    end
+    scatter!(ax, reim.(corners); color=QCOLORS[q], strokecolor=:black, strokewidth=1.5, markersize=17)
+    loci!(ax, zeros, ComplexF64[])
+    ax.title = walkfires ? &quot;walk $(isnothing(w) ? &quot;ambiguous&quot; : signed(w)): fires&quot; :
+               length(seen) ≥ 3 ? &quot;walk 0, $(length(seen)) quadrants: guard fires&quot; : &quot;walk 0, one quadrant: dark&quot;
+end
+
+fig = Figure(; size=(760, 300))
+axs = [Axis(fig[1, i]; aspect=DataAspect()) for i in 1:3]
+hidedecorations!.(axs)
+a = 0.37 + 0.62im
+cell!(axs[1], z -&gt; (z - a) * cis(0.4), 0im, 1 + 1im; zeros=[a])
+# a pair of test/runtests.jl, and the lattice cell of `BOX` that holds `a`
+a, b = 0.367 + 0.069im, 0.182 + 0.075im
+cell!(axs[2], z -&gt; (z - a) * (z - b), 0.25 + 0im, 0.375 + 0.125im; zeros=[a, b], view=(real(b) + 0im, 0.375 + 0.125im))
+cell!(axs[3], z -&gt; (z - 0.5 - 0.5im)^4 * cis(0.5), 0im, 1 + 1im; zeros=[0.5 + 0.5im])
+Legend(fig[2, :], [PolyElement(; color=(c, 0.6)) for c in QCOLORS], [&quot;quadrant $i&quot; for i in 1:4];
+    orientation=:horizontal, framevisible=false)</code></pre></details><img src="walk_guard.png" width="760" alt="walk_guard"><p><em>Corners (circles) and guard midpoints (diamonds) over the quadrant of <code>f</code>, with each edge&#39;s quadrant step. Left: one simple zero. Middle: one of two zeros (○). Right: a 4-fold zero.</em></p><h2 id="Labels"><a class="docs-heading-anchor" href="#Labels">Labels</a><a id="Labels-1"></a><a class="docs-heading-anchor-permalink" href="#Labels" title="Permalink"></a></h2><ul><li>Firing cells at <code>zres</code> that share an edge or a corner form a <strong>group</strong>.</li><li>A group&#39;s label is the winding of <code>f</code> around its <strong>outline</strong>: its cells grown by one cell and clipped to the box. Separate groups are at least two cells apart, so an outline holds no other group&#39;s cells.</li><li>Outlines are integrated adaptively: each edge is bisected until every step turns the phase by less than π/2 and changes |f| by less than 2×.</li><li>A group whose cells&#39; walks show both signs may hold a zero and a pole that a net vote hides, e.g. a simple zero beside a double pole votes −1.</li></ul><details><summary>Code</summary><pre><code class="language-julia hljs">zs, ps = [0.10 + 0.07im, -0.2 - 0.15im], [0.27 + 0.12im]
+f = z -&gt; (z - zs[1]) * (z - zs[2])^2 / (z - ps[1])
+tree, cells = search(f, BOX, ArgumentPrinciple(zres=0.05))
+fig = Figure(; size=(500, 380))
+ax = Axis(fig[1, 1]; aspect=DataAspect(), xlabel=&quot;Re z&quot;, ylabel=&quot;Im z&quot;)
+phase!(ax, f, -0.42 - 0.36im, 0.5 + 0.32im)
+for g in _group(cells)
+    o = outline(tree, g)
+    poly!(ax, rect.(Ref(tree.memo.lat), g); color=(signcolor(o.w), 0.55), strokecolor=:black, strokewidth=0.5)
+    linesegments!(ax, o.segs; color=:black, linewidth=2.5)
+    scatter!(ax, o.pts; color=:white, strokecolor=:black, strokewidth=1, markersize=6)
+    text!(ax, minimum(first, o.segs), maximum(last, o.segs); text=&quot;w = $(signed(o.w))&quot;, fontsize=16, font=:bold, align=(:left, :bottom))
+end
+loci!(ax, zs, ps; markersize=10)</code></pre></details><img src="labels.png" width="500" alt="labels"><p><em>Groups of firing cells (filled), their outlines, and the points each vote evaluated, for a simple zero, a simple pole and a double zero at <code>zres = 0.05</code>.</em></p><h2 id="Escalation"><a class="docs-heading-anchor" href="#Escalation">Escalation</a><a id="Escalation-1"></a><a class="docs-heading-anchor-permalink" href="#Escalation" title="Permalink"></a></h2><ul><li>A group whose cells show both signs, votes 0, or cannot be read is refined one level below <code>zres</code>, regrouped and labelled again, up to <code>zoom</code> levels.</li><li>A group that votes 0 and has nothing firing one level finer is dropped: its cells fired on a misread phase (a locus just outside the box, a phase turning faster than a cell), not on a locus.</li><li>A group still unlabelled at the last level is reported <code>unresolved</code>: a zero and a pole closer than a last-level cell.</li><li>Each labelled group is reported at the mean of its cell centres, then polished.</li></ul><details><summary>Code</summary><pre><code class="language-julia hljs"># One panel per level until every group is labelled.
+rows = [
+    (; f=z -&gt; (z - 0.985 - 0.011im) / (z - 1.012 - 0.006im), box=(0 - 0.4im, 2 + 0.4im), zres=0.05,
+        zeros=[0.985 + 0.011im], poles=[1.012 + 0.006im], view=(0.94 - 0.04im, 1.06 + 0.06im)),
+]
+fig = Figure(; size=(580, 250))
+for (r, (; f, box, zres, zeros, poles, view)) in enumerate(rows)
+    tree, cells = search(f, box, ArgumentPrinciple(; zres))
+    undecided(g) = (o = outline(tree, g); o.mixed || something(o.w, 0) == 0)
+    levels = [_group(cells)]
+    while any(undecided, levels[end]) &amp;&amp; length(levels) &lt; 3
+        push!(levels, reduce(vcat, [undecided(g) ? _group(_deepen!(tree, g)) : [g] for g in levels[end]]))
+    end
+    for (i, groups) in enumerate(levels)
+        ax = Axis(fig[r, i]; aspect=DataAspect(), title=i == 1 ? &quot;zres&quot; : &quot;zres / $(2^(i - 1))&quot;)
+        hidedecorations!(ax)
+        phase!(ax, f, view...)
+        for g in groups
+            o = outline(tree, g)
+            poly!(ax, rect.(Ref(tree.memo.lat), g); color=(signcolor(o.w), 0.6), strokecolor=:black, strokewidth=0.5)
+            linesegments!(ax, o.segs; color=:black, linewidth=2.5)
+            left = something(o.w, 0) ≥ 0    # opposite corners, so neighbouring labels stay apart
+            text!(ax, (left ? minimum : maximum)(first, o.segs), maximum(last, o.segs); text=&quot;w = $(signed(o.w))&quot; * (o.mixed ? &quot;, mixed&quot; : &quot;&quot;),
+                fontsize=15, font=:bold, align=(left ? :left : :right, :bottom))
+        end
+        loci!(ax, zeros, poles; markersize=10)
+    end
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi"><span class="sgr33"><span class="sgr1">┌ Warning: </span></span>Assignment to `tree` in soft scope is ambiguous because a global variable by the same name exists: `tree` will be treated as a new local. Disambiguate by using `local tree` to suppress this warning or `global tree` to assign to the existing global variable.
+<span class="sgr33"><span class="sgr1">└ </span></span><span class="sgr90">@ argument_principle.md:254</span>
+<span class="sgr33"><span class="sgr1">┌ Warning: </span></span>Assignment to `cells` in soft scope is ambiguous because a global variable by the same name exists: `cells` will be treated as a new local. Disambiguate by using `local cells` to suppress this warning or `global cells` to assign to the existing global variable.
+<span class="sgr33"><span class="sgr1">└ </span></span><span class="sgr90">@ argument_principle.md:254</span>
+<span class="sgr33"><span class="sgr1">┌ Warning: </span></span>Assignment to `ax` in soft scope is ambiguous because a global variable by the same name exists: `ax` will be treated as a new local. Disambiguate by using `local ax` to suppress this warning or `global ax` to assign to the existing global variable.
+<span class="sgr33"><span class="sgr1">└ </span></span><span class="sgr90">@ argument_principle.md:261</span></code></pre></details><img src="escalation.png" width="580" alt="escalation"><p><em>A zero (○) and a pole (×) 0.027 apart at <code>zres = 0.05</code> form one group voting 0; two levels finer they split. Cells are green, red or grey as their group votes positive, negative or 0.</em></p><h2 id="What-can-go-wrong"><a class="docs-heading-anchor" href="#What-can-go-wrong">What can go wrong</a><a id="What-can-go-wrong-1"></a><a class="docs-heading-anchor-permalink" href="#What-can-go-wrong" title="Permalink"></a></h2><table><tr><th style="text-align: right">Case</th><th style="text-align: right">Effect</th><th style="text-align: right">Recovered by</th></tr><tr><td style="text-align: right">Zero–pole pair much closer than <code>minsep</code></td><td style="text-align: right">cancels on the walk; its phase fades within a few pair-widths</td><td style="text-align: right">nothing</td></tr><tr><td style="text-align: right">Same-sign loci closer than <code>minsep</code>, or phase turning &gt; π/2 between corners</td><td style="text-align: right">walk reads 0</td><td style="text-align: right">nothing</td></tr><tr><td style="text-align: right">k-fold locus centred in a cell</td><td style="text-align: right">walk misreads it (triple −4, 4-fold 0) at every scale, since (z − z0)^k is scale-free</td><td style="text-align: right">nothing; labels unaffected</td></tr><tr><td style="text-align: right">Simple locus with a second one hugging the same edge</td><td style="text-align: right">can slip past walk and guard</td><td style="text-align: right">nothing</td></tr></table></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../aaa/">« AAA</a><a class="docs-footer-nextpage" href="../api/">API »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.20.0 on <span class="colophon-date" title="Sunday 15 November 2026 22:30">Sunday 15 November 2026</span>. Using Julia version 1.13.4.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
