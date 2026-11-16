@@ -4,7 +4,7 @@ using LinearAlgebra
 
 export findzeros, findpoles, findzeropoles, findloci, AAA, ArgumentPrinciple, Continuation, Muller
 @static if VERSION >= v"1.11.0-DEV.469"
-    eval(Meta.parse("public aaa, poles, Barycentric, nevals, muller, Survey, Branch, Sample"))
+    eval(Meta.parse("public aaa, poles, Barycentric, muller, Survey, Branch, Sample"))
 end
 
 """
