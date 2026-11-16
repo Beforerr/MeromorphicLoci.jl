@@ -457,15 +457,21 @@ end
 # unreadable, or left over by `_members`), and the seeder's count of zeros minus poles
 # (`nothing` if unreadable, `missing` if it does not count).
 function _seeds(c, seed, g)
-    r = _points(g, c.box, seed, Val(0), Muller(), c.mapper)
-    count = !haskey(r, :deficit) ? missing : isnothing(r.deficit) ? nothing : r.deficit + sum(r.windings; init=0)
-    ne = r.nevals
+    (; loci, nevals, info) = _enclose(g, c.box, seed, Val(0), c.mapper)
+    count = !haskey(info, :deficit) ? missing : isnothing(info.deficit) ? nothing : info.deficit + sum(l -> l.w, loci; init=0)
+    ne = nevals
     found = @NamedTuple{z::ComplexF64, w::Int}[]
-    # `AAA` reports points just outside the box, where nothing is followed nor counted
-    odd = [(; z, w=0) for z in r.unresolved if _inside(c.box, z, 0.0)]
-    for (z, w, ok) in zip(r.points, r.windings, r.converged)
+    odd = @NamedTuple{z::ComplexF64, w::Int}[]
+    for (; z, r, w) in loci
+        ok = false
+        if abs(w) == 1
+            z, ok, n = _polish(Polish(), g, z, r, w, c.mapper)
+            ne += n
+        end
         _inside(c.box, z, 0.0) || continue
-        if ok && abs(w) == 1
+        if w == 0
+            push!(odd, (; z, w))
+        elseif ok
             push!(found, (; z, w))
         else
             ms, left, n = _members(c, g, z, w)

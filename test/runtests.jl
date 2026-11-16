@@ -29,6 +29,10 @@ end
     include("test_muller.jl")
 end
 
+@testset "polish" begin
+    include("test_polish.jl")
+end
+
 @testset "continuation" begin
     include("test_continuation.jl")
 end
@@ -56,7 +60,7 @@ end
 end
 
 @testset "nevals counts every call of f" begin
-    for alg in (AAA(), ArgumentPrinciple(zres=0.02, minsep=0.18)), polish in (Muller(), nothing)
+    for alg in (AAA(), ArgumentPrinciple(zres=0.02, minsep=0.18)), polish in (Polish(), nothing)
         n = Threads.Atomic{Int}(0)
         f(z) = (Threads.atomic_add!(n, 1); (z - 0.3) * (z + 0.4im)^2 / (z - 0.6))
         r = findzeropoles(f, (-1 - 1im, 1 + 1im), alg; polish)
@@ -167,7 +171,8 @@ end
     box, alg = (-1.0 - 1.0im, 1.0 + 1.0im), ArgumentPrinciple(zres=0.01, minsep=0.18)
     r = findzeropoles(f, box, alg)
     @test all(abs.(r.points .- [-0.4im, 0.3, 0.6]) .< 0.01) && r.windings == [2, 1, -1]
-    @test r.converged == [false, true, true] && isempty(r.unresolved)
+    @test r.converged == [true, true, true] && isempty(r.unresolved)
+    @test r.points[1] ≈ -0.4im atol = 1e-15    # a double zero, where Muller would stall near 1e-8
     @test findzeros(f, box, alg).points == r.points[1:2] && findpoles(f, box, alg).points == r.points[3:3]
     @test findzeropoles(f, (1.0 - 1.0im, -1.0 + 1.0im), alg) == r
     # multiple zeros off the lattice and centred in a cell, where a 4-corner walk
@@ -187,7 +192,7 @@ end
         ArgumentPrinciple(zres=0.2, minsep=0.6)).windings == [2, 1]
     # simple zeros a cell apart: neither's vote counts the other
     @test length(findzeros(z -> (z - 0.3) * (z - 0.32), box, ArgumentPrinciple(zres=0.02, minsep=0.18)).points) == 2
-    # simple zeros fused into one branch stay at its mean: a polish would put both on one
+    # simple zeros fused into one point are polished to their mean
     r = findzeros(z -> (z - 0.3) * (z - 0.31), box, ArgumentPrinciple(zres=0.02, minsep=0.18))
-    @test r.windings == [2] && r.converged == [false] && abs(only(r.points) - 0.3) < 0.02 && abs(only(r.points) - 0.31) < 0.02
+    @test r.windings == [2] && r.converged == [true] && isapprox(only(r.points), 0.305; atol = 1e-15)
 end

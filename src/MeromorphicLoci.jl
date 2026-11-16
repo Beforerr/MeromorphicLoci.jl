@@ -2,22 +2,22 @@ module MeromorphicLoci
 
 using LinearAlgebra
 
-export findzeros, findpoles, findzeropoles, findloci, AAA, ArgumentPrinciple, Continuation, Muller
+export findzeros, findpoles, findzeropoles, findloci, AAA, ArgumentPrinciple, Continuation, Polish
 @static if VERSION >= v"1.11.0-DEV.469"
     eval(Meta.parse("public aaa, poles, Barycentric, muller, Survey, Branch, Sample"))
 end
 
 """
-    findzeros(f, zdomain, alg = AAA(); polish = Muller(), mapper = map)
+    findzeros(f, zdomain, alg = AAA(); polish = Polish(), mapper = map)
 
 Zeros of `f(z)` in the box `zdomain = (zlo, zhi)` of opposite corners.
 Returns a named tuple:
 
 - `points`: sorted by real, then imaginary part.
 - `windings`: multiplicity, negative for a pole. Points closer than `alg` resolves merge
-  into one of their summed winding.
-- `converged`: whether `polish` ([`Muller`](@ref)) met its tolerance. Only points of
-  winding ±1 are polished; `polish = nothing` keeps the estimates of `alg`.
+  into one of their summed winding, at about their mean.
+- `converged`: whether `polish` ([`Polish`](@ref)) met its tolerance; `polish = nothing`
+  keeps the estimates of `alg`.
 - `unresolved`: zeros or poles detected but not classified.
 - `nevals`: evaluations of `f`.
 - `fitconverged` ([`AAA`](@ref)) or `deficit` ([`ArgumentPrinciple`](@ref)).
@@ -25,22 +25,22 @@ Returns a named tuple:
 Zeros and poles where `f` overflows to `Inf` or underflows to 0 go unfound: divide out
 exponential growth, or shrink the box.
 """
-findzeros(f, zdomain, alg=AAA(); polish=Muller(), mapper=map) = _points(f, zdomain, alg, Val(1), polish, mapper)
+findzeros(f, zdomain, alg=AAA(); polish=Polish(), mapper=map) = _points(f, zdomain, alg, Val(1), polish, mapper)
 
 """
-    findpoles(f, zdomain, alg = AAA(); polish = Muller(), mapper = map)
+    findpoles(f, zdomain, alg = AAA(); polish = Polish(), mapper = map)
 
 Poles of `f(z)`; otherwise as [`findzeros`](@ref).
 """
-findpoles(f, zdomain, alg=AAA(); polish=Muller(), mapper=map) = _points(f, zdomain, alg, Val(-1), polish, mapper)
+findpoles(f, zdomain, alg=AAA(); polish=Polish(), mapper=map) = _points(f, zdomain, alg, Val(-1), polish, mapper)
 
 """
-    findzeropoles(f, zdomain, alg = AAA(); polish = Muller(), mapper = map)
+    findzeropoles(f, zdomain, alg = AAA(); polish = Polish(), mapper = map)
 
 Zeros and poles of `f(z)` from one search, costing little more than either alone;
 otherwise as [`findzeros`](@ref).
 """
-findzeropoles(f, zdomain, alg=AAA(); polish=Muller(), mapper=map) = _points(f, zdomain, alg, Val(0), polish, mapper)
+findzeropoles(f, zdomain, alg=AAA(); polish=Polish(), mapper=map) = _points(f, zdomain, alg, Val(0), polish, mapper)
 
 # A locus estimate: centre `z`, winding `w` (0 if unknown), radius `r` holding no other locus.
 struct Locus
@@ -70,11 +70,8 @@ function _points(f, zdomain, alg, ::Val{W}, polish, mapper) where {W}
             keep(z) && push!(unresolved, z)
             continue
         end
-        converged = false
-        if abs(w) == 1
-            z, converged, ne = _polish(polish, w > 0 ? f : _reciprocal(f), z, r)
-            nevals += ne
-        end
+        z, converged, ne = _polish(polish, f, z, r, w, mapper)
+        nevals += ne
         keep(z) && push!(found, (; z, w, converged))
     end
     sort!(found; by = t -> reim(t.z))
@@ -96,6 +93,7 @@ _inside((lo, hi), z, pad) =
 _reach(z, others, scale) = min(scale, 0.4 * minimum(o -> abs(o - z), others; init = Inf))
 
 include("muller.jl")
+include("polish.jl")
 include("winding.jl")
 include("survey.jl")
 include("argument_principle.jl")
