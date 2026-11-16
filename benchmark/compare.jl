@@ -22,7 +22,7 @@ const NSLICE = 128
 function run_survey()
     s = findloci(k -> ω -> f(ω, k), BOX[1], Base.tail(BOX), Continuation(AAA(); zres=ZTOL))
     return (; nbranch=length(s), nzero=count(b -> b.winding > 0, s),
-        nevals=MeromorphicLoci.nevals(s))
+        nevals=s.nevals)
 end
 
 # --- naive baseline: independent 2-D GRPF at each k --------------------------
