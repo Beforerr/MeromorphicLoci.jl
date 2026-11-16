@@ -1,11 +1,13 @@
 [deps]
 BaryRational = "91aaffc3-5777-4842-85b7-5d3d5d6a3494"
 Chairmarks = "0ca39b1e-fe0b-4e98-acfc-b1656634c4de"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 MeromorphicLoci = "767268ff-ad81-4cfc-beec-7f34c307b461"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 RationalFunctionApproximation = "c92886a3-cb30-4e18-b84f-372dde475ecc"
 RootsAndPoles = "a0859a10-ccb4-11e8-145d-674b3750773a"
+SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 
 # registered BaryRational (1.1.1) caps GenericLinearAlgebra at 0.3, which fails to precompile
 # beside RationalFunctionApproximation
