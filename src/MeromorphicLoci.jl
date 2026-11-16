@@ -2,9 +2,9 @@ module MeromorphicLoci
 
 using LinearAlgebra
 
-export findzeros, findpoles, findzeropoles, AAA, ArgumentPrinciple, Muller
+export findzeros, findpoles, findzeropoles, findloci, AAA, ArgumentPrinciple, Continuation, Muller
 @static if VERSION >= v"1.11.0-DEV.469"
-    eval(Meta.parse("public aaa, poles, Barycentric, nevals, muller"))
+    eval(Meta.parse("public aaa, poles, Barycentric, nevals, muller, Survey, Branch, Sample"))
 end
 
 """
@@ -89,8 +89,10 @@ _reach(z, others, scale) = min(scale, 0.4 * minimum(o -> abs(o - z), others; ini
 
 include("muller.jl")
 include("winding.jl")
+include("survey.jl")
 include("argument_principle.jl")
 include("labels.jl")
 include("aaa.jl")
+include("continuation.jl")
 
 end

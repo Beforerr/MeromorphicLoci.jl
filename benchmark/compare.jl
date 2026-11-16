@@ -1,7 +1,7 @@
-# Region-tree (ω,k) survey vs the naive per-k GRPF slicing, on a cold electron–proton
-# parallel dispersion (Stix R/L transverse branches). Both survey the SAME 3-D
-# box; the tree shares corner evaluations across k while per-slice GRPF re-pays
-# a full 2-D base mesh at every k. Run: julia --project=benchmark benchmark/compare.jl
+# One (ω,k) survey vs the naive per-k GRPF slicing, on a cold electron–proton parallel
+# dispersion (Stix R/L transverse branches). Both cover the same box in (ω, k): the survey
+# finds the roots at a few k and follows them in between, while per-slice GRPF re-pays a
+# full 2-D mesh at every k. Run: julia --project=benchmark benchmark/compare.jl
 using MeromorphicLoci
 using RootsAndPoles
 using Printf
@@ -18,10 +18,10 @@ const BOX = ((0.05 - 0.15im, 4.05 + 0.15im), (1.0, 3.0))   # (ω, k)
 const ZTOL = 0.02
 const NSLICE = 128
 
-# --- region-tree survey (one 3-D pass) ---------------------------------------
-function run_tree()
-    s = findloci(k -> ω -> f(ω, k), BOX[1], Base.tail(BOX), ArgumentPrinciple(zres=ZTOL))
-    return (; nbranch=length(s), nzero=count(b -> winding(b) > 0, s),
+# --- one survey: roots found at the knots in k and followed between them -----
+function run_survey()
+    s = findloci(k -> ω -> f(ω, k), BOX[1], Base.tail(BOX), Continuation(AAA(); zres=ZTOL))
+    return (; nbranch=length(s), nzero=count(b -> b.winding > 0, s),
         nevals=MeromorphicLoci.nevals(s))
 end
 
@@ -45,16 +45,16 @@ function run_slices(; nslice=NSLICE)
 end
 
 # --- warm up, then time -------------------------------------------------------
-run_tree()
+run_survey()
 run_slices()
 
-t_oct = @elapsed oct = run_tree()
+t_sv = @elapsed sv = run_survey()
 t_sl = @elapsed sl = run_slices()
 
-@printf("\n%-18s %12s %12s %10s\n", "method", "unique evals", "wall (s)", "branches")
+@printf("\n%-18s %12s %12s %10s\n", "method", "evals", "wall (s)", "branches")
 @printf("%-18s %12d %12.3f %10d  (%d root-curves)\n",
-    "region-tree 3-D", oct.nevals, t_oct, oct.nbranch, oct.nzero)
+    "findloci", sv.nevals, t_sv, sv.nbranch, sv.nzero)
 @printf("%-18s %12d %12.3f %10s  (%d roots over %d slices)\n",
     "per-k GRPF", sl.nevals, t_sl, "—", sl.nroot_total, sl.nslice)
 @printf("\nspeedup: %.1f× evals, %.1f× wall\n",
-    sl.nevals / oct.nevals, t_sl / t_oct)
+    sl.nevals / sv.nevals, t_sl / t_sv)

@@ -28,15 +28,16 @@ or `findpoles` alone.
 `findloci` takes `f(p...)` returning the function of `z`, and
 returns a `Survey` of `Branch`es (below).
 
-Two algorithms:
+Algorithms:
 
-- **`ArgumentPrinciple(; zres, …)`** — adaptive cells over `(z, p...)`, refined
-  only near the loci via Cauchy's argument principle. 
-  z is refined to `zres`; `p` only as finely as the
-  loci move. Loci come out connected and classified.
-- **`AAA(; nsamples, tol, …)`** — rational fit of samples of `f(z)`, at fixed parameters only.
+- **`AAA(; nsamples, tol, …)`** — a point finder: rational fit of samples of `f(z)`.
+- **`ArgumentPrinciple(; zres, …)`** — a point finder: adaptive cells over `z`, refined
+  only near the zeros and poles by Cauchy's argument principle.
+- **`Continuation(seed; …)`** — loci over parameters: the point finder `seed` finds them
+  at a few parameter knots, and each is followed in between. `findloci` with a point
+  finder stands for `Continuation` seeded by it.
 
-## Argument principle
+## Loci over parameters
 
 `m = 1` parameter → loci are curves `z*(p)`; `m = 2` → surfaces `z*(p₁,p₂)`.
 
@@ -49,39 +50,34 @@ f(p) = z -> (z - 0.80 * cispi(p)) * (z + 0.10 + 0.12im) /
             ((z - 0.804 * cispi(-p + 0.3)) * (z + 0.13 + 0.12im))
 zbox = (-0.98 - 0.98im, 0.98 + 0.98im)  # opposite corners of the z-rectangle
 pbox = ((0.0, 1.0),)                    # one (lo, hi) or knot vector per parameter
-s = findloci(f, zbox, pbox, ArgumentPrinciple(zres = 0.02))  # zres: z-plane resolution
-@assert length(s) == 2
-zero_branch = only(b for b in s if winding(b) > 0)
-pole_branch = only(b for b in s if winding(b) < 0)
+s = findloci(f, zbox, pbox, AAA())      # Continuation(AAA())
+@assert length(s) == 4 && isempty(s.deficit) && all(b -> isempty(b.uncertified), s)
+zero_branches = [b for b in s if b.winding > 0]
 ```
 
-A `Branch` is one locus `z*(p)`: its `Sample`s `(z, p...)` sorted by parameter, each
-within about `zres` of the locus. `winding(b)` classifies it — `> 0` zero, `< 0` pole,
-`0` indeterminate — with magnitude the multiplicity.
+A `Branch` is one locus `z*(p)`: its `Sample`s `(z, p...)` sorted by parameter, each a
+polished point of the locus. `b.winding` classifies it — `> 0` zero, `< 0` pole, `0` a
+lone sample of unreadable kind — with magnitude the multiplicity. `b.uncertified` lists the stretches where the branch came
+too close to another locus to be told from it, and `s.deficit` the knots where the box
+holds more zeros minus poles than the branches there.
 
-Two clean branches here take **escalation**: where the helices graze, closer than
-`zres`, they fuse into one branch of winding 0, which is refined below `zres`, up to
-`zoom` halvings, until it splits. `zoom = 0` turns this off:
+What is found is what the seeder finds at some knot:
 
 ```julia
-@assert length(findloci(f, zbox, pbox, ArgumentPrinciple(zres = 0.02, zoom = 0))) == 1  # fused, winding 0
+# the fixed pair is closer than `minsep`: its windings cancel in every cell, and in the count
+@assert length(findloci(f, zbox, pbox, ArgumentPrinciple(zres = 0.02))) == 2
 ```
-
-The fixed pair is missed in both: it sits closer than `minsep`, so a coarse cell holds
-both and their windings cancel. A smaller `minsep` finds it:
-
-```julia
-@assert length(findloci(f, zbox, pbox, ArgumentPrinciple(zres = 0.02, minsep = 0.3, zoom = 0))) == 3
-@assert length(findloci(f, zbox, pbox, ArgumentPrinciple(zres = 0.02, minsep = 0.3))) == 4  # default zoom = 4
-```
-
-(`minsep = 0.3 ≫ 0.03` catches the pair only because a cell boundary happens to fall
-between its members; the guarantee needs `minsep < 0.03`.)
 
 ![zero and pole loci in 3D](docs/src/assets/survey.png)
 
-Without parameters, the point finders report each branch as one point, and winding-0
-branches as `unresolved`:
+How it works, what is certified and what it can miss:
+[continuation.md](docs/src/continuation.md).
+[benchmark/compare.jl](./benchmark/compare.jl) follows the roots of a dispersion relation
+over `k` with one survey, and with 128 independent slices by
+[RootsAndPoles.jl](https://github.com/fgasdia/RootsAndPoles.jl) (SA-GRPF by Delaunay
+triangulation, at fixed parameters).
+
+## Argument principle
 
 ```julia
 r = findzeropoles(z -> (z - 0.3) * (z + 0.4im)^2 / (z - 0.6), (-1 - 1im, 1 + 1im),
@@ -90,9 +86,6 @@ r = findzeropoles(z -> (z - 0.3) * (z + 0.4im)^2 / (z - 0.6), (-1 - 1im, 1 + 1im
 ```
 
 How it works: [argument_principle.md](docs/src/argument_principle.md).
-[RootsAndPoles.jl](https://github.com/fgasdia/RootsAndPoles.jl) implements SA-GRPF by
-Delaunay triangulation for the `m = 0` problem; [benchmark/compare.jl](./benchmark/compare.jl)
-surveys one 3-D box with one adaptive survey and with 128 independent 2-D RootsAndPoles slices.
 
 ## AAA
 

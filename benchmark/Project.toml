@@ -11,7 +11,7 @@ RootsAndPoles = "a0859a10-ccb4-11e8-145d-674b3750773a"
 # beside RationalFunctionApproximation
 [sources]
 BaryRational = {rev = "main", url = "https://github.com/macd/BaryRational.jl"}
-RootsAndPoles = {url = "https://github.com/fgasdia/RootsAndPoles.jl"}
+RootsAndPoles = {rev = "v3.0.1", url = "https://github.com/fgasdia/RootsAndPoles.jl"}
 
 [compat]
 BaryRational = "1"
