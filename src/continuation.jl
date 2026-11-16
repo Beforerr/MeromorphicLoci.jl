@@ -32,13 +32,13 @@ _zres(seed, zbox) = throw(ArgumentError("Continuation needs `zres` with a $(type
 Loci `z*(p)` of the zeros and poles of `f(p...)(z)` in the box `zdomain = (zlo, zhi)` as `p` ranges over `pdomain`.
 
 `pdomain` holds one entry per parameter: an interval `(lo, hi)`, searched at equispaced
-knots (9 for one parameter, 5 each for more), or a sorted vector of knots.
+knots (8 for one parameter, 6 each for more), or a sorted vector of knots.
 """
 findloci(f, zdomain, pdomain, alg::Union{AAA,ArgumentPrinciple}=AAA(); mapper=map) =
     findloci(f, zdomain, pdomain, Continuation(alg); mapper)
 
 # Equispaced knots of an interval `(lo, hi)`: over one parameter, and per parameter over more.
-const _PKNOTS = (9, 5)
+const _PKNOTS = (8, 6)
 
 _knots(p::Tuple{Real,Real}, n) = _knots(collect(range(Float64(p[1]), Float64(p[2]); length=n)), n)
 function _knots(t::AbstractVector, _)

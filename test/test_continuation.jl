@@ -117,7 +117,7 @@ end
     @test length(s) == 12 && all(==(1), winding.(s)) && all(b -> isempty(b.uncertified), s)
     @test count(b -> prange(b) == (0.5, 3.0), s) == 2 && all(b -> prange(b)[2] == 3.0, s)
     @test all(b -> all(x -> abs(f(x.p[1])(x.z)) < 1e-9, b), s) && nevals(s) < 6900
-    foreach(τ -> findzeropoles(f(τ), zbox, AAA()), range(0.5, 3.0, 9))
+    foreach(τ -> findzeropoles(f(τ), zbox, AAA()), range(0.5, 3.0, 8))   # the default knots
     @test outside[] == 2n > 0
 end
 
