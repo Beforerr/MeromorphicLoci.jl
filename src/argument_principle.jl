@@ -4,21 +4,21 @@
 Zeros and poles of `f(z)` in the box `zdomain = (zlo, zhi)` by
 adaptive refinement of cells where the phase of `f` winds.
 
-- `zres` — resolution of the points before the polish, and the scale at which loci are
-  told apart: loci closer than about `zres` fuse into one of their net winding, e.g. two
-  simple zeros read as one double zero.
+- `zres` — resolution of the points before the polish, and the scale at which zeros and
+  poles are told apart: those closer than about `zres` fuse into one of their net winding,
+  e.g. two simple zeros read as one double zero.
 - `minsep` — the closest zero–pole spacing the search must see: a closer pair can cancel
-  and vanish, unflagged by `deficit`. Loci of one kind closer than `minsep` are still
+  and vanish, unflagged by `deficit`. Zeros (or poles) closer than `minsep` are still
   found, at extra cost. Sets the cost floor, about `2·area/minsep²` evaluations.
-- `zoom` — halvings below `zres`, at most 8, to separate a fused zero–pole pair. A pair of
-  equal orders closer than `zres/2^zoom` is reported `unresolved`; one of different orders
-  closer than about `zres` stays fused, as one locus of their net winding.
+- `zoom` — how many times, at most 8, to halve below `zres` to separate a zero and a pole
+  of equal order; a pair closer than `zres/2^zoom` is reported `unresolved`. Of unequal
+  orders, they stay fused as under `zres`.
 
-Besides the common fields, returns `deficit`: zeros minus poles in the box that the loci
-found (both kinds, as `findzeropoles` reports them) leave unaccounted. Nonzero means
-missed loci, often beside a found zero or pole of high order: divide known factors out of
+Besides the common fields, returns `deficit`: the box's count of zeros minus poles, less
+the windings found (of both kinds, as `findzeropoles` reports them). Nonzero means some
+were missed, often beside a found zero or pole of high order: divide known factors out of
 `f`. `nothing` means the winding around the box can't be read: `f` is non-finite on its
-edge, or a locus sits there (pad the box).
+edge, or a zero or pole sits there (enlarge the box slightly).
 """
 struct ArgumentPrinciple
     zres::Float64
