@@ -9,7 +9,7 @@ at fixed parameters or as loci `z*(p)` that move with parameters `p`.
 using MeromorphicLoci
 
 f(z) = (z^2 - 1) * (z - 0.5im) / (z - 2)
-r = findzeropoles(f, (-3 - 1im, 3 + 1im), AAA())   # the box by opposite corners
+r = findzeropoles(f, (-3 - 1im, 3 + 1im))   # the box by opposite corners
 # windings: > 0 for a zero, < 0 for a pole, |winding| = multiplicity
 @assert r.points ≈ [-1, 0.5im, 1, 2] && r.windings == [1, 1, 1, -1]
 ```
@@ -23,7 +23,7 @@ g(p) = z -> (z - 0.80 * cispi(p)) * (z + 0.10 + 0.12im) /
             ((z - 0.804 * cispi(-p + 0.3)) * (z + 0.13 + 0.12im))
 zbox = (-0.98 - 0.98im, 0.98 + 0.98im)
 pbox = ((0.0, 1.0),)                    # one (lo, hi) or vector of knots per parameter
-s = findloci(g, zbox, pbox, AAA())
+s = findloci(g, zbox, pbox)
 @assert sort([b.winding for b in s]) == [-1, -1, 1, 1]   # the moving pair and the fixed pair
 # nothing missed or ambiguous
 @assert isempty(s.deficit) && all(b -> isempty(b.uncertified), s)
@@ -37,10 +37,10 @@ the parameter tuple `x.p`, with `x.z` on the locus.
 ## Interface
 
 ```julia
-findzeros(f, zdomain, alg; polish, mapper)       # zeros of f(z)
-findpoles(f, zdomain, alg; polish, mapper)       # poles
-findzeropoles(f, zdomain, alg; polish, mapper)   # both, from one search
-findloci(f, zdomain, pdomain, alg; mapper)       # loci z*(p) of zeros and poles of f(p...)(z)
+findzeros(f, zdomain, alg = AAA(); polish, mapper)       # zeros of f(z)
+findpoles(f, zdomain, alg = AAA(); polish, mapper)       # poles
+findzeropoles(f, zdomain, alg = AAA(); polish, mapper)   # both, from one search
+findloci(f, zdomain, pdomain, alg = AAA(); mapper)       # loci z*(p) of f(p...)(z)
 ```
 
 The point finders return `(; points, windings, converged, unresolved, nevals, …)`;
@@ -48,13 +48,13 @@ The point finders return `(; points, windings, converged, unresolved, nevals, �
 
 ## Algorithms
 
-- **`AAA(; nsamples, tol, …)`** fits a rational function to samples of `f`. Use it first:
+- **`AAA(; nsamples, tol, …)`** fits a rational function to samples of `f`. The default:
   it costs about `nsamples` evaluations plus a few dozen per point found, whatever the box
   size, where `ArgumentPrinciple` costs at least `2·area/minsep²`; and it resolves
   zero–pole pairs a few times closer than its sample spacing.
 - **`ArgumentPrinciple(; zres, minsep, …)`** refines cells near the zeros and poles by the argument principle. Use it to
   cross-check `AAA` ([Checks and cost](#checks-and-cost)).
-- **`Continuation(seed; …)`** runs the point finder `seed` at a few parameter values, the
+- **`Continuation(seed = AAA(); …)`** runs the point finder `seed` at a few parameter values, the
   knots, and follows each locus between them with Muller's method. `findloci` with a
   point finder `alg` is short for `Continuation(alg)`.
 

@@ -8,7 +8,7 @@ export findzeros, findpoles, findzeropoles, findloci, AAA, ArgumentPrinciple, Co
 end
 
 """
-    findzeros(f, zdomain, alg; polish = Muller(), mapper = map)
+    findzeros(f, zdomain, alg = AAA(); polish = Muller(), mapper = map)
 
 Zeros of `f(z)` in the box `zdomain = (zlo, zhi)` of opposite corners.
 Returns a named tuple:
@@ -25,22 +25,22 @@ Returns a named tuple:
 Zeros and poles where `f` overflows to `Inf` or underflows to 0 go unfound: divide out
 exponential growth, or shrink the box.
 """
-findzeros(f, zdomain, alg; polish=Muller(), mapper=map) = _points(f, zdomain, alg, Val(1), polish, mapper)
+findzeros(f, zdomain, alg=AAA(); polish=Muller(), mapper=map) = _points(f, zdomain, alg, Val(1), polish, mapper)
 
 """
-    findpoles(f, zdomain, alg; polish = Muller(), mapper = map)
+    findpoles(f, zdomain, alg = AAA(); polish = Muller(), mapper = map)
 
 Poles of `f(z)`; otherwise as [`findzeros`](@ref).
 """
-findpoles(f, zdomain, alg; polish=Muller(), mapper=map) = _points(f, zdomain, alg, Val(-1), polish, mapper)
+findpoles(f, zdomain, alg=AAA(); polish=Muller(), mapper=map) = _points(f, zdomain, alg, Val(-1), polish, mapper)
 
 """
-    findzeropoles(f, zdomain, alg; polish = Muller(), mapper = map)
+    findzeropoles(f, zdomain, alg = AAA(); polish = Muller(), mapper = map)
 
 Zeros and poles of `f(z)` from one search, costing little more than either alone;
 otherwise as [`findzeros`](@ref).
 """
-findzeropoles(f, zdomain, alg; polish=Muller(), mapper=map) = _points(f, zdomain, alg, Val(0), polish, mapper)
+findzeropoles(f, zdomain, alg=AAA(); polish=Muller(), mapper=map) = _points(f, zdomain, alg, Val(0), polish, mapper)
 
 # A locus estimate: centre `z`, winding `w` (0 if unknown), radius `r` holding no other locus.
 struct Locus

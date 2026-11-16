@@ -1,5 +1,5 @@
 """
-    Continuation(seed; zres = nothing, zfloor = nothing, certify = true)
+    Continuation(seed = AAA(); zres = nothing, zfloor = nothing, certify = true)
 
 Loci over parameters for [`findloci`](@ref): the point finder `seed` finds them at the knots, and [`muller`](@ref) follows them
 between. [How it works and what it can miss](@ref continuation).
@@ -18,7 +18,7 @@ struct Continuation{S}
     zfloor::Union{Nothing,Float64}
     certify::Bool
 end
-Continuation(seed; zres=nothing, zfloor=nothing, certify=true) =
+Continuation(seed=AAA(); zres=nothing, zfloor=nothing, certify=true) =
     Continuation(seed, _float(zres), _float(zfloor), certify)
 _float(x) = isnothing(x) ? nothing : Float64(x)
 
@@ -27,14 +27,14 @@ _zres(seed::AAA, (lo, hi)) = sqrt(prod(reim(hi - lo)) / seed.nsamples) / 4
 _zres(seed, zbox) = throw(ArgumentError("Continuation needs `zres` with a $(typeof(seed)) seed"))
 
 """
-    findloci(f, zdomain, pdomain, alg; mapper = map) :: Survey
+    findloci(f, zdomain, pdomain, alg = AAA(); mapper = map) :: Survey
 
 Loci `z*(p)` of the zeros and poles of `f(p...)(z)` in the box `zdomain = (zlo, zhi)` as `p` ranges over `pdomain`.
 
 `pdomain` holds one entry per parameter: an interval `(lo, hi)`, searched at equispaced
 knots (9 for one parameter, 5 each for more), or a sorted vector of knots.
 """
-findloci(f, zdomain, pdomain, alg::Union{AAA,ArgumentPrinciple}; mapper=map) =
+findloci(f, zdomain, pdomain, alg::Union{AAA,ArgumentPrinciple}=AAA(); mapper=map) =
     findloci(f, zdomain, pdomain, Continuation(alg); mapper)
 
 # Equispaced knots of an interval `(lo, hi)`: over one parameter, and per parameter over more.
