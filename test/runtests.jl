@@ -94,7 +94,7 @@ end
     end
 end
 
-@testset "loci a coarse cell aliases away are recovered where the box's count exceeds the found" begin
+@testset "loci the search misses are recovered where the box's count differs from the labels" begin
     # eight zeros on a circle 0.1 across, inside one root cell: its corners turn 8 times
     for c in (0.3 + 0.2im, 0.123 - 0.456im)
         r = findzeros(z -> (z - c)^8 - 0.1^8, (-1 - 1im, 1 + 1im), ArgumentPrinciple(zres=0.02, minsep=0.36))
@@ -103,9 +103,29 @@ end
     # a zero on the box edge leaves the box's count unreadable: unchecked, not passed
     g8(z) = ((z - 0.3 - 0.2im)^8 - 0.1^8) * (z - 1 - 0.1234im)
     @test findzeros(g8, (-1 - 1im, 1 + 1im), ArgumentPrinciple(zres=0.02, minsep=0.18)).deficit === nothing
-    # a 4-fold zero on a lattice point: only cells beside it fire, so the cells' count
-    # passes but labelling drops them; the deficit counts the labels, not the cells
-    @test findzeros(z -> (z - (1 + 1im) / 128)^4, (-1 - 1im, 1 + 1im), ArgumentPrinciple(zres=0.02, minsep=0.18)).deficit == 4
+    # beside a found locus, over Weyl sequences: 4-fold zeros on `zres` lattice points, which
+    # can sit at the centre of a dark cell twice as wide, with only a broken ring of cells
+    # firing around them; triple zero–pole pairs closer than `minsep`, which can share a dark
+    # cell winding 0
+    weyl(i, s) = mod(i * s, 1)
+    φ = (√5 - 1) / 2
+    alg = ArgumentPrinciple(zres=0.02, minsep=0.18)
+    missed = filter(1:60) do i
+        c = complex(round(180weyl(i, φ) - 90), round(180weyl(i, φ^2) - 90)) / 128
+        r = findzeros(z -> (z - c)^4, (-1 - 1im, 1 + 1im), alg)
+        r.windings != [4] || r.deficit != 0
+    end
+    @test isempty(missed)
+    missed = filter(1:500) do i
+        a = complex(1.6weyl(i, φ) - 0.8, 1.6weyl(i, φ^2) - 0.8)
+        b = a + (0.01 + 0.09weyl(i, √2)) * cispi(2weyl(i, √3))
+        findzeropoles(z -> ((z - a) / (z - b))^3, (-1 - 1im, 1 + 1im), alg).deficit != 0
+    end
+    @test isempty(missed)
+    # the pair's shared cell halved still holds both
+    a, b = 0.5992 + 0.7584im, 0.6197 + 0.7923im
+    r = findzeropoles(z -> ((z - a) / (z - b))^3, (-1 - 1im, 1 + 1im), alg)
+    @test sort(r.windings) == [-3, 3] && r.deficit == 0
 end
 
 @testset "`minsep` sets the base mesh, hence the evaluation floor" begin

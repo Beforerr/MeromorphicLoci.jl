@@ -7,21 +7,18 @@ adaptive refinement of cells where the phase of `f` winds.
 - `zres` — resolution of the points before the polish, and the scale at which loci are
   told apart: loci closer than about `zres` fuse into one of their net winding, e.g. two
   simple zeros read as one double zero.
-- `minsep` — the closest zero–pole spacing the search must see. Cells are refined to this
-  size before any is discarded, and a zero and a pole closer than `minsep` can cancel
-  inside one cell and vanish silently. Loci of one kind closer than `minsep` can escape the search; the box's count recovers
-  them at extra cost (`deficit` below). `minsep` also sets the cost floor, about
-  `2·area/minsep²` evaluations.
+- `minsep` — the closest zero–pole spacing the search must see: a closer pair can cancel
+  and vanish, unflagged by `deficit`. Loci of one kind closer than `minsep` are still
+  found, at extra cost. Sets the cost floor, about `2·area/minsep²` evaluations.
 - `zoom` — halvings below `zres`, at most 8, to separate a fused zero–pole pair. A pair of
   equal orders closer than `zres/2^zoom` is reported `unresolved`; one of different orders
   closer than about `zres` stays fused, as one locus of their net winding.
 
 Besides the common fields, returns `deficit`: zeros minus poles in the box that the loci
 found (both kinds, as `findzeropoles` reports them) leave unaccounted. Nonzero means
-missed loci, often a zero or pole of order ≥ 4: divide known factors out of `f`.
-`nothing` means the winding around the box can't be read: `f` is non-finite on its edge,
-or a locus sits there (pad the box). A zero–pole pair cancels in the count, so `deficit`
-can't see one missed.
+missed loci, often beside a found zero or pole of high order: divide known factors out of
+`f`. `nothing` means the winding around the box can't be read: `f` is non-finite on its
+edge, or a locus sits there (pad the box).
 """
 struct ArgumentPrinciple
     zres::Float64
@@ -56,6 +53,10 @@ function _enclose(f, zdomain, alg::ArgumentPrinciple, ::Val, mapper)
     wbox = _certify!(memo, cells, dark, alg.zres)
     groups = _label(memo, cells; alg.zoom)
     deficit = isnothing(wbox) ? nothing : wbox - sum(last, groups; init=0)
+    while something(deficit, 0) != 0 && !isempty(cells) && _beside!(memo, cells, dark, alg.zres)
+        groups = _label(memo, cells; alg.zoom)
+        deficit = wbox - sum(last, groups; init=0)
+    end
     zs = ComplexF64[sum(c -> _zcenter(lat, c), cs) / length(cs) for (cs, _) in groups]
     loci = map(enumerate(groups)) do (i, (_, w))
         others = (zs[j] for j in eachindex(zs) if j != i)
@@ -179,8 +180,8 @@ end
 @inline _quadrants(memo, c::Cell) = map(s -> _quadrant(memo, s), c.corners)
 
 # Signed phase winding of a cell's corner quadrants (in `_quadrants` order) walked CCW: +4
-# for an enclosed zero, −4 for a pole, `nothing` if any step jumps two quadrants (an
-# unresolved ±π step whose direction is ambiguous — the cell must be refined).
+# for an enclosed zero, −4 for a pole, `nothing` if a step jumps two quadrants (±π,
+# direction ambiguous).
 @inline function _cellwinding(q)
     w = 0
     for (a, b) in ((q[1], q[2]), (q[2], q[4]), (q[4], q[3]), (q[3], q[1]))
@@ -265,6 +266,13 @@ function _certify!(memo, cells, dark, zres)
     isnothing(wbox) && return nothing
     wf = isempty(cells) ? 0 : _vote(memo, cells)
     (isnothing(wf) || wf == wbox) && return wbox
+    _recover!(memo, cells, dark, zres)
+    return wbox
+end
+
+# Search again the dark cells that wind, by their own winding; `dark` keeps those that don't.
+function _recover!(memo, cells, dark, zres)
+    (; lat) = memo
     suspects = copy(dark)
     empty!(dark)
     while !isempty(suspects)
@@ -282,7 +290,26 @@ function _certify!(memo, cells, dark, zres)
         suspects = Cell[]
         append!(cells, _refine!(memo, frontier, zres, suspects))
     end
-    return wbox
+    return dark
+end
+
+# Search again the dark cells within a cell of `cells`. A coarse one can wind 0 holding a
+# counted locus and a missed partner, so it is split; one at `zres` is read by its winding,
+# as a k-fold locus centred in it fires neither check. Returns whether any cell was split
+# or fired, since a split half can still hold both.
+function _beside!(memo, cells, dark, zres)
+    (; lat) = memo
+    n = length(cells)
+    st = cells[1].step
+    near = map(dark) do d
+        any(c -> all(i -> c.base[i] - st[i] ≤ d.base[i] + d.step[i] && d.base[i] ≤ c.base[i] + 2st[i], 1:2), cells)
+    end
+    coarse = [c for c in dark[near] if _zdiag(lat, c) > zres]
+    suspects = [c for c in dark[near] if _zdiag(lat, c) ≤ zres]
+    deleteat!(dark, near)
+    isempty(coarse) || append!(cells, _refine!(memo, reduce(vcat, [_split(memo, c) for c in coarse]), zres, suspects))
+    append!(dark, _recover!(memo, cells, suspects, zres))
+    return !isempty(coarse) || length(cells) > n
 end
 
 # The outline of a box of `n` cells, each `st` lattice steps, through every cell corner.

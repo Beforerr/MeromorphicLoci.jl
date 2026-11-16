@@ -3,7 +3,7 @@
 `ArgumentPrinciple` finds the zeros and poles (**loci**) of `f` in a box in four steps:
 
 1. **Search**: refine a mesh of cells toward loci, reading only the phase of `f` at cell corners.
-2. **Certificate**: count the box's loci by its winding; search again where the cells fall short.
+2. **Certificate**: count the box's loci by its winding; search again where the cells or labels fall short.
 3. **Label**: group the cells and count each group by the argument principle.
 4. **Escalate**: refine groups whose label is unclear.
 
@@ -176,8 +176,8 @@ The winding of `f` around the box counts its loci, zeros minus poles.
 - Otherwise each dark cell is checked by its own winding. It holds no firing cell, so a
   nonzero winding is a missed locus: the cell is searched again, and fires if it still
   winds at `zres`.
-- What the labels (below) leave of the box's count is reported as `deficit` (see
-  [`ArgumentPrinciple`](@ref)).
+- If the labels (below) still differ from the box's count, the dark cells within a cell
+  of a group are searched again. The remainder is `deficit`.
 
 ```@raw html
 <details><summary>Code</summary>
@@ -320,11 +320,9 @@ votes positive, negative or 0.*
 
 ## What can go wrong
 
-| Case | Effect | Recovered by |
+| Case | Effect | Result |
 |---|---|---|
-| Zero–pole pair much closer than `minsep` | cancels on the walk and in the box's count; its phase fades within a few pair-widths | nothing |
-| Same-sign loci closer than `minsep`, or phase turning > π/2 between corners | walk reads 0 | certificate |
-| k-fold locus centred in a cell | walk misreads it (triple −4, 4-fold 0) at every scale, since (z − z0)^k is scale-free | certificate |
-| Simple locus with a second one hugging the same edge | can slip past walk and guard | certificate, or fused into its partner's label |
-| k-fold locus on a lattice point | only cells beside it fire; outlines through it can't be read and it is dropped | flagged by `deficit` |
-| Zero and pole of different orders closer than about a cell (two for order 3) | not mixed: labelled one locus of their net winding | nothing (the count agrees) |
+| Zero–pole pair much closer than `minsep` | cancels on the walk and in the box's count; its phase fades within a few pair-widths | missed, unflagged |
+| Simple locus with a second one hugging the same edge | can slip past walk, guard and certificate | fused into its partner's label, or flagged by `deficit` |
+| High-order loci within a few cells of each other | rarely, one is missed beside the other | flagged by `deficit` |
+| Zero and pole of different orders closer than about a cell (two for order 3) | not mixed | one locus of their net winding, unflagged |
