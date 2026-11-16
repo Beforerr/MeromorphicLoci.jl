@@ -34,7 +34,7 @@ Firing cells split down to `zres`. The rest go dark.
 ```@example ap
 using MeromorphicLoci, CairoMakie, Base64
 using MeromorphicLoci: _search, _certify!, _group, _outline, _outlined, _mixed, _deepen!,
-    _polygon_winding, _cellwinding, _qstep, quadrant, Cell
+    _polygon_winding, _winding, _boxpoly, _cellwinding, _qstep, quadrant, Cell
 
 const GREEN, RED, GREY = "#389826", "#CB3C33", "#777777"
 const QCOLORS = ["#E69F00", "#56B4E9", "#009E73", "#CC79A7"]   # quadrants 1–4
@@ -74,7 +74,7 @@ function outline(memo, cells)
     lat = memo.lat
     vs, edges = _outline(lat, cells)
     pts = NTuple{2,Float64}[]
-    _polygon_winding(p -> (append!(pts, p); memo(p)), vs, edges)
+    _winding(memo, (vs, edges); F=p -> (append!(pts, p); memo(p)))
     w, lo, hi = _outlined(memo, cells)
     segs = [Point2f(reim(lat[vs[i]])...) for e in edges for i in e]
     return (; segs, w, mixed=!isnothing(w) && _mixed(memo, cells, lo, hi), pts=[Point2f(reim(lat[p])...) for p in pts])
@@ -168,9 +168,82 @@ embed(fig, "walk_guard") # hide
 edge's quadrant step. Left: one simple zero. Middle: one of two zeros (○). Right: a 4-fold
 zero.*
 
+## Windings
+
+The box, a dark cell and a group's outline are each counted by the winding of `f` around
+a polygon: the phase turn of `f` along its edges, over 2π. Each edge is bisected until
+every step turns the phase by less than π/2 and changes |f| by less than 2×.
+
+Samples see the phase only modulo 2π, so a step over which it turns a whole 2π reads as
+still. A locus beside the edge turns the phase fast but briefly, and |f| dips or peaks
+there too, which the 2× rule catches. A phase turning steadily faster than the steps
+leaves no such mark: `f` growing like ``e^{κz}``, or the far field of a crowd of loci.
+
+|f| measures the same turn without wrapping. ``\log f = \log|f| + i \arg f`` is analytic, so
+by Cauchy–Riemann, along an edge with unit tangent ``s`` and normal ``n = is`` to its left,
+
+```math
+∂_s \arg f = -∂_n \log|f|.
+```
+
+The level lines of |f| and of ``\arg f`` cross at right angles, equally spaced. Phase lines
+crossing an edge densely are |f| lines stacked densely beside it. The lattice holds |f| near
+every edge at no cost, so each end of an edge is compared with the nearest evaluated point
+along its normal; the smaller rate of the two ends, times the edge's length, estimates its
+turn, and the edge is bisected until each step turns less than π/2 by that estimate too.
+
+This is an estimate, not a bound. A locus between an edge's end and the point it is
+compared with flattens the difference, which is why the nearest point is read; a turn
+fast in the middle of an edge and slow at both its ends is seen only through |f| along it.
+Windings outside the lattice (`Continuation`, `AAA`) are read from samples alone.
+
+```@raw html
+<details><summary>Code</summary>
+```
+
+```@example ap
+# A zero, and a phase turning 12(x + 1) per unit along Im z: still on the left edge, 24 on the right.
+a = -0.3 + 0.2im
+f = z -> (z - a) * exp(6 * (z + 1)^2)
+memo, _ = _search(f, BOX, ArgumentPrinciple(zres=0.05, minsep=0.7), map)
+poly = _boxpoly(memo.lat, (Int32(1) << memo.lat.kz, Int32(1) << memo.lat.kz))
+# with the estimate first, so the lattice it reads is the search's alone
+runs = map((F -> _winding(memo, poly; F), F -> _polygon_winding(F, poly...))) do wind
+    pts = NTuple{2,Float64}[]
+    w = wind(p -> (append!(pts, p); memo(p)))
+    (; w, pts=[Point2f(reim(memo.lat[p])...) for p in pts])
+end
+fig = Figure(; size=(720, 380))
+xs, ys = grid(BOX..., 200)
+logabs = [log(abs(f(complex(x, y)))) for x in xs, y in ys]
+for (i, (title, (; w, pts))) in enumerate(zip(("samples alone", "|f| beside the edge"), reverse(runs)))
+    local ax = Axis(fig[1, i]; aspect=DataAspect(), xlabel="Re z", ylabel="Im z", title="steps by $title: w = $(signed(w))")
+    phase!(ax, f, BOX...)
+    contour!(ax, xs, ys, logabs; levels=0:2:40, color=(:black, 0.35))
+    lines!(ax, [(-1, -1), (1, -1), (1, 1), (-1, 1), (-1, -1)]; color=:black, linewidth=1.5)
+    scatter!(ax, pts; color=:white, strokecolor=:black, strokewidth=1, markersize=6)
+    loci!(ax, [a], ComplexF64[])
+    limits!(ax, -1.08, 1.08, -1.08, 1.08)
+end
+nothing # hide
+```
+
+```@raw html
+</details>
+```
+
+```@example ap
+embed(fig, "windings") # hide
+```
+
+*The box's samples for ``(z - a)\,e^{6(z+1)^2}`` over its phase (hue) and log|f| (contours,
+every 2). On the right edge the phase turns 24 per unit: samples alone step over whole turns
+of it and read −1. There log|f| changes as fast across the edge (contours stacked beside
+it), and stepping by that reads +1.*
+
 ## Certificate
 
-The winding of `f` around the box counts its loci, zeros minus poles.
+The box's winding counts its loci, zeros minus poles.
 
 - The search passes if the firing cells, grown by one cell, wind the same.
 - Otherwise each dark cell is checked by its own winding. It holds no firing cell, so a
@@ -216,8 +289,6 @@ finds some; the box counts 8, so the dark cells that wind are searched again.*
 - A group's label is the winding of `f` around its **outline**: its cells grown by one
   cell and clipped to the box. Separate groups are at least two cells apart, so an outline
   holds no other group's cells.
-- Outlines are integrated adaptively: each edge is bisected until every step turns the
-  phase by less than π/2 and changes |f| by less than 2×.
 - A group is **mixed** if its vote may hide loci of both kinds, e.g. a simple zero beside
   a double pole votes −1. By the maximum modulus principle, a cell corner with |f| above
   the outline's maximum implies a pole inside, below its minimum a zero; both means mixed.

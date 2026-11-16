@@ -4,8 +4,10 @@ const _EDGE_BUDGET = 1024
 
 # Winding of `f` around closed polygons (`edges` index pairs into the vertices `vs`);
 # `nothing` on an unusable sample (0/NaN/Inf), an unresolved phase jump, or an edge past
-# `_EDGE_BUDGET`.
-function _polygon_winding(F, vs, edges)
+# `_EDGE_BUDGET`. `turn[k]` estimates |phase turn| along edge `k` from what the samples
+# cannot show: they read a turn of 2π per half stretch as none (docs/src/argument_principle.md,
+# Windings). An edge is split until each stretch turns below π by it.
+function _polygon_winding(F, vs, edges, turn=zeros(length(edges)))
     fv = F(vs)
     all(_is_valid, fv) || return nothing
     lv = [log(complex(x)) for x in fv]
@@ -25,7 +27,7 @@ function _polygon_winding(F, vs, edges)
             _is_valid(x) || return nothing
             lm = log(complex(x))
             Δ = _settled_turn(la, lm, lb)
-            if isnothing(Δ)
+            if isnothing(Δ) || turn[k] * (b - a) ≥ π
                 (spent[k] += 2) < _EDGE_BUDGET || return nothing
                 m = (a + b) / 2
                 push!(next, (k, a, m, la, lm), (k, m, b, lm, lb))

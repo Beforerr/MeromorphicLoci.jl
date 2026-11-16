@@ -17,3 +17,9 @@ end
     r = findzeropoles(p.f, box, alg)
     @test matches(r, filter(l -> inbox(box, l[1]), p.loci)) && r.deficit == 0
 end
+
+@testset "a box edge whose phase turns near 2π per vertex spacing is counted" begin
+    # along Re z = 2.5 the waveguide's phase turns ≈ 23 rad per unit, past 2π per half edge
+    p = only(filter(p -> p.f === wvgd, RP_PROBLEMS))
+    @test findzeropoles(p.f, p.box, ArgumentPrinciple(zres = 0.02, minsep = 1.0)).deficit == 0
+end

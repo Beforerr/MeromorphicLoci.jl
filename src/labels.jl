@@ -88,11 +88,12 @@ end
 # extremes of |f|² sampled on it.
 function _outlined(memo, cells)
     seen = ComplexF64[]
-    w = _polygon_winding(_outline(memo.lat, cells)...) do pts
+    function sample(pts)
         vals = memo(pts)
         append!(seen, vals)
         return vals
     end
+    w = _winding(memo, _outline(memo.lat, cells); F=sample)
     lo, hi = extrema(abs2, seen)
     return w, lo, hi
 end
