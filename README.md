@@ -104,9 +104,9 @@ pair(z) = (z + 0.17 + 0.18im) / (z + 0.20 + 0.18im)   # 0.03 apart
 
 How it works: [argument_principle.md](docs/src/argument_principle.md).
 [RootsAndPoles.jl](https://github.com/fgasdia/RootsAndPoles.jl) solves the same problem
-with SA-GRPF on a Delaunay triangulation; [benchmark/compare.jl](./benchmark/compare.jl)
-tracks the loci of a dispersion relation over a wavenumber range with one `findloci` call
-and with 128 independent RootsAndPoles slices.
+with SA-GRPF, a Delaunay mesh refined where the phase of `f` bends.
+[benchmark/rootsandpoles.jl](./benchmark/rootsandpoles.jl) runs its test problems with
+all three; [benchmark/compare.jl](./benchmark/compare.jl) tracks the loci of a dispersion relation over a wavenumber range.
 
 ## Checks and cost
 
@@ -118,6 +118,9 @@ and with 128 independent RootsAndPoles slices.
     Cross-check with `ArgumentPrinciple` where a miss matters.
   - `Continuation`: counts at every knot with either point finder: `isempty(s.deficit)`.
     Otherwise raise `nsamples` for `AAA`, or lower `minsep` for `ArgumentPrinciple`.
+- **Multiscale boxes.** `AAA`'s samples and `ArgumentPrinciple`'s base mesh are uniform, so
+  a box far wider than the loci it must tell apart costs too much or misses them, silently where a zero and a pole cancel in every count. Search
+  where they crowd in a box of its own.
 - **Expensive thread-safe `f`.** Pass `mapper` an order-preserving threaded map, such as
   `tmap(f, xs) = fetch.([Threads.@spawn f(x) for x in xs])` or OhMyThreads.jl's `tmap`.
   `findloci` also calls `f(p...)` through it, which must then be thread-safe too.

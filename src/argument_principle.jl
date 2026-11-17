@@ -177,6 +177,42 @@ function (m::Memo)(pts)
     return vals
 end
 
+# `f` at a lattice point if evaluated, else `nothing`.
+function _held(m::Memo, ix)
+    all(isinteger, ix) || return nothing
+    s = get(m.slot, Int32.(ix), 0)
+    return 0 < s ≤ length(m.vals) ? m.vals[s] : nothing
+end
+
+# Winding around a polygon in lattice coordinates, sampled through `F` (default: the memo
+# itself), with each edge's turn estimated from |f| beside it.
+_winding(memo, (vs, edges); F=memo) = _polygon_winding(F, vs, edges, _turns(memo, vs, edges))
+
+# |Phase turn| along each edge, by Cauchy–Riemann from |f| across it (docs/src/argument_principle.md,
+# Windings). Each end is compared with the nearest evaluated point along the normal, either
+# side, since a locus between the two flattens the difference. The smaller end is kept: a
+# locus by one end inflates it there, while a steady turn shows at both. 0 where an end has
+# no such point.
+function _turns(memo, vs, edges)
+    zh = memo.lat.zh
+    return map(edges) do (i, j)
+        p, q = vs[i], vs[j]
+        d = q .- p
+        n = (-d[2], d[1])
+        kmax = trailing_zeros(Int(gcd(Int.(n)...)))
+        function rate(x)
+            fx = @something(_held(memo, x), return 0.0)
+            for k in kmax:-1:0, s in (1, -1)
+                u = s .* n ./ 2^k
+                fy = @something(_held(memo, x .+ u), continue)
+                return abs(log(abs(fy) / abs(fx))) / hypot((u .* zh)...)
+            end
+            return 0.0
+        end
+        hypot((d .* zh)...) * min(rate(p), rate(q))
+    end
+end
+
 @inline _quadrants(memo, c::Cell) = map(s -> _quadrant(memo, s), c.corners)
 
 # Signed phase winding of a cell's corner quadrants (in `_quadrants` order) walked CCW: +4
@@ -262,7 +298,7 @@ end
 # Where the found cells' vote differs from it, dark cells that wind are searched again.
 function _certify!(memo, cells, dark, zres)
     (; lat) = memo
-    wbox = _polygon_winding(memo, _boxpoly(lat, (Int32(1) << lat.kz, Int32(1) << lat.kz))...)
+    wbox = _winding(memo, _boxpoly(lat, (Int32(1) << lat.kz, Int32(1) << lat.kz)))
     isnothing(wbox) && return nothing
     wf = isempty(cells) ? 0 : _vote(memo, cells)
     (isnothing(wf) || wf == wbox) && return wbox
@@ -278,7 +314,7 @@ function _recover!(memo, cells, dark, zres)
     while !isempty(suspects)
         frontier = Cell[]
         for c in suspects
-            w = _polygon_winding(memo, _boxpoly(c)...)
+            w = _winding(memo, _boxpoly(c))
             if w == 0
                 push!(dark, c)
             elseif _zdiag(lat, c) > zres
